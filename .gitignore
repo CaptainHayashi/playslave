@@ -12,6 +12,10 @@
 *.dylib
 
 # Executables
+main
 *.exe
 *.out
 *.app
+
+# Core dumps
+*.core
