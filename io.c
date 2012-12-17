@@ -4,15 +4,20 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "io.h"
 
-const char     *ERRORS[] = {
+const char     *ERRORS[NUM_ERRORS] = {
+	"ApparentlyNotAnError",
 	"FileNotFound",
-	"InvalidStateChange",
-	"InvalidFormat",
-	"NeedOutputDevice",
+	"BadFile",
+	"BadStateChange",
+	"BadConfig",
+	"InternalError",
+	"NoMem",
+	"???",
 };
 
-void 
+void
 debug(int level, const char *format,...)
 {
 	va_list		ap;
@@ -20,27 +25,27 @@ debug(int level, const char *format,...)
 
 	level = (int)level;
 
-	fprintf(stderr, "DEBUG ");
+	fprintf(stderr, "DBUG ");
 	vfprintf(stderr, format, ap);
 	fprintf(stderr, "\n");
 
 	va_end(ap);
 }
 
-void 
-error(int code, const char *format,...)
+void
+error(enum error code, const char *format,...)
 {
 	va_list		ap;
 	va_start(ap, format);
 
-	fprintf(stderr, "ERROR %s ", ERRORS[code]);
+	fprintf(stderr, "OOPS %s ", ERRORS[code]);
 	vfprintf(stderr, format, ap);
 	fprintf(stderr, "\n");
 
 	va_end(ap);
 }
 
-int 
+int
 input_waiting(void)
 {
 	fd_set		rfds;
