@@ -26,6 +26,13 @@ Known issues
 - No way to eject
 - No real use as of yet
 
+Acknowledgments
+---------------
+
+A lot of the audio bits of this were salvaged from example code, most notably
+http://blinkingblip.wordpress.com/2011/10/08/decoding-and-playing-an-audio-stream-using-libavcodec-libavformat-and-libao/
+and some other sources.
+
 Licence
 -------
 
