@@ -1,8 +1,8 @@
 CC := clang
-CFLAGS := -Wall -Wextra -Werror --std=c99 `pkg-config --cflags libavformat-011 libavcodec-011 ao`
-LIBS := `pkg-config --libs libavformat-011 libavcodec-011 ao`
+CFLAGS := -Wall -Wextra -Werror --std=c99 `pkg-config --cflags libavformat1 libavcodec1 ao`
+LIBS := `pkg-config --libs libavformat1 libavcodec1 ao`
 
-OBJS := main.o player.o io.o
+OBJS := main.o player.o io.o cmd.o
 
 main: $(OBJS) 
 	$(CC) -o main $(OBJS) $(LIBS)
@@ -15,3 +15,6 @@ player.o: player.c
 
 io.o: io.c
 	$(CC) -c -o io.o io.c $(CFLAGS)
+
+cmd.o: cmd.c
+	$(CC) -c -o cmd.o cmd.c $(CFLAGS)

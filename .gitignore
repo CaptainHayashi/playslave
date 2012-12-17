@@ -19,3 +19,9 @@ main
 
 # Core dumps
 *.core
+
+# Backups
+*.BAK
+
+# Vim swap
+*.sw[a-zA-Z]
