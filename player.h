@@ -1,6 +1,7 @@
 #ifndef PLAYER_H
 #define PLAYER_H
 
+#include <pthread.h>
 #include <ao/ao.h>
 
 struct player_context;
@@ -15,6 +16,9 @@ enum player_state {
 int player_init(struct player_context **play,
                 int ao_driver_id,
                 ao_option *ao_options);
+void player_free(struct player_context *play);
+
+void player_on_state_change(struct player_context *play, void (*cb)(struct player_context *));
 
 /* Player commands */
 enum error player_eject(struct player_context *play);

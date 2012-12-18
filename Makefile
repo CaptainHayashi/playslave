@@ -1,6 +1,6 @@
 CC := clang
-CFLAGS := -Wall -Wextra -Werror --std=c99 `pkg-config --cflags libavformat1 libavcodec1 ao`
-LIBS := `pkg-config --libs libavformat1 libavcodec1 ao`
+CFLAGS := -g -Wall -Wextra -Werror --std=c99 `pkg-config --cflags libavformat1 libavcodec1 ao` -pthread
+LIBS := `pkg-config --libs libavformat1 libavcodec1 ao` -pthread
 
 OBJS := main.o player.o io.o cmd.o audio.o
 

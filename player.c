@@ -1,3 +1,4 @@
+#include <pthread.h>
 #include <stdint.h>
 #include <assert.h>
 
@@ -10,7 +11,13 @@ struct player_context {
 	int		ao_driver_id;
 	ao_option      *ao_options;
 	struct audio   *au;
+
+        pthread_mutex_t state_mutex;
+        pthread_cond_t state_changed;
 };
+
+
+static void player_set_state(struct player_context *play, enum player_state new);
 
 
 int
@@ -26,12 +33,22 @@ player_init(struct player_context **play,
 			failure = -1;
 		}
 	}
-	if (!failure) {
-		player_eject(*play);
+	if (!failure) 
+            failure = pthread_mutex_init(&(*play)->state_mutex, NULL); 
+        if (!failure)
+            failure = pthread_cond_init(&(*play)->state_changed, NULL);
+        if (!failure) {
 		(*play)->ao_driver_id = ao_driver_id;
 		(*play)->ao_options = ao_options;
 	}
 	return failure;
+}
+
+void
+player_free(struct player_context *play)
+{
+    pthread_mutex_destroy(&(play->state_mutex));
+    pthread_cond_destroy(&(play->state_changed));
 }
 
 enum error
@@ -47,7 +64,7 @@ player_eject(struct player_context *play)
 			audio_unload(play->au);
 			play->au = NULL;
 		}
-		play->state = EJECTED;
+		player_set_state(play, EJECTED);
 		result = E_OK;
 		debug(0, "player ejected");
 		break;
@@ -71,7 +88,7 @@ player_play(struct player_context *play)
 
 	switch (play->state) {
 	case STOPPED:
-		play->state = PLAYING;
+		player_set_state(play, PLAYING);
 		result = E_OK;
 		break;
 	case PLAYING:
@@ -101,7 +118,7 @@ player_stop(struct player_context *play)
 
 	switch (play->state) {
 	case PLAYING:
-		play->state = STOPPED;
+		player_set_state(play, STOPPED);
 		result = E_OK;
 		break;
 	case STOPPED:
@@ -161,11 +178,22 @@ player_load(struct player_context *play, const char *filename)
 		}
 		player_eject(play);
 	} else {
-		play->state = STOPPED;
+		player_set_state(play, STOPPED);
 		result = E_OK;
 	}
 
 	return result;
+}
+
+void
+player_on_state_change(struct player_context *play, void (*cb)(struct player_context *))
+{
+        pthread_mutex_lock(&play->state_mutex);
+        pthread_cond_wait(&play->state_changed, &play->state_mutex);
+
+        cb(play);
+        
+        pthread_mutex_unlock(&play->state_mutex);
 }
 
 void
@@ -200,7 +228,7 @@ player_shutdown(struct player_context *play)
 	enum error result;
 
         result = player_eject(play);
-	play->state = SHUTTING_DOWN;
+	player_set_state(play, SHUTTING_DOWN);
 
         return result;
 }
@@ -209,4 +237,14 @@ enum player_state
 player_state(struct player_context *play)
 {
 	return play->state;
+}
+
+static void player_set_state(struct player_context *play, enum player_state new)
+{
+    pthread_mutex_lock(&play->state_mutex);
+
+    play->state = new;
+    pthread_cond_signal(&play->state_changed);
+
+    pthread_mutex_unlock(&play->state_mutex);
 }
