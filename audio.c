@@ -31,11 +31,11 @@ struct audio {
 	int		device_id;	/* PortAudio device ID */
 };
 
-static enum audio_init_err audio_init_stream(struct audio *au);
-static enum audio_init_err audio_init_packet(AVPacket **packet, uint8_t *buffer);
-static enum audio_init_err audio_init_sink(struct audio *au);
-static enum audio_init_err audio_init_codec(struct audio *au, int stream, AVCodec *codec);
-static PaStreamCallbackResult audio_handle_frame(struct audio *au);
+static enum audio_init_err au_init_stream(struct audio *au);
+static enum audio_init_err au_init_packet(AVPacket **packet, uint8_t *buffer);
+static enum audio_init_err au_init_sink(struct audio *au);
+static enum audio_init_err au_init_codec(struct audio *au, int stream, AVCodec *codec);
+static PaStreamCallbackResult au_handle_frame(struct audio *au);
 
 enum audio_init_err
 audio_load(struct audio **au,
@@ -65,7 +65,7 @@ audio_load(struct audio **au,
 			result = E_AINIT_FIND_STREAM_INFO;
 	}
 	if (result == E_AINIT_OK) {
-		result = audio_init_stream(*au);
+		result = au_init_stream(*au);
 	}
 	return result;
 }
@@ -101,7 +101,7 @@ audio_stop(struct audio *au)
 }
 
 static int
-audio_play_frame(const void *in,
+au_play_frame(const void *in,
 		 void *out,
 		 unsigned long frames_per_buf,
 		 const PaStreamCallbackTimeInfo *timeInfo,
@@ -130,7 +130,7 @@ audio_play_frame(const void *in,
 				}
 				if (result == paContinue &&
 				au->packet->stream_index == au->stream_id) {
-					result = audio_handle_frame(au);
+					result = au_handle_frame(au);
 				}
 			}
 
@@ -179,7 +179,7 @@ audio_unload(struct audio *au)
 /* STATIC FUNCTIONS */
 
 static enum audio_init_err
-audio_init_stream(struct audio *au)
+au_init_stream(struct audio *au)
 {
 	AVCodec        *codec;
 	int		stream;
@@ -195,15 +195,15 @@ audio_init_stream(struct audio *au)
 		result = E_AINIT_NO_STREAM;
 
 	if (result == E_AINIT_OK)
-		result = audio_init_codec(au, stream, codec);
+		result = au_init_codec(au, stream, codec);
 	if (result == E_AINIT_OK)
-		result = audio_init_sink(au);
+		result = au_init_sink(au);
 
 	return result;
 }
 
 static enum audio_init_err
-audio_init_codec(struct audio *au, int stream, AVCodec *codec)
+au_init_codec(struct audio *au, int stream, AVCodec *codec)
 {
 	enum audio_init_err result = E_AINIT_OK;
 
@@ -213,7 +213,7 @@ audio_init_codec(struct audio *au, int stream, AVCodec *codec)
 	if (result == E_AINIT_OK) {
 		au->stream = au->context->streams[stream];
 		au->stream_id = stream;
-		result = audio_init_packet(&(au->packet), au->buffer);
+		result = au_init_packet(&(au->packet), au->buffer);
 	}
 	if (result == E_AINIT_OK) {
 		au->frame = avcodec_alloc_frame();
@@ -229,7 +229,7 @@ audio_init_codec(struct audio *au, int stream, AVCodec *codec)
 }
 
 static enum audio_init_err
-audio_init_packet(AVPacket **packet, uint8_t *buffer)
+au_init_packet(AVPacket **packet, uint8_t *buffer)
 {
 	enum audio_init_err result = E_AINIT_OK;
 
@@ -245,7 +245,7 @@ audio_init_packet(AVPacket **packet, uint8_t *buffer)
 }
 
 static enum audio_init_err
-audio_init_sink(struct audio *au)
+au_init_sink(struct audio *au)
 {
 	enum audio_init_err result = E_AINIT_OK;
 	AVCodecContext *codec = au->stream->codec;
@@ -299,7 +299,7 @@ audio_init_sink(struct audio *au)
 				    (double)codec->sample_rate,
 				    frames_per_buf,
 				    paClipOff,
-				    audio_play_frame,
+				    au_play_frame,
 				    (void *)au);
 		if (err)
 			result = E_AINIT_DEVICE_OPEN_FAIL;
@@ -308,7 +308,7 @@ audio_init_sink(struct audio *au)
 }
 
 static PaStreamCallbackResult
-audio_handle_frame(struct audio *au)
+au_handle_frame(struct audio *au)
 {
 	PaStreamCallbackResult result = paContinue;
 
