@@ -25,17 +25,22 @@ struct audio {
 	ao_option      *ao_options;
 	ao_device      *ao_device;
 	uint8_t		buffer [BUFFER_SIZE];
-	struct timespec frame_dur;
-	int frame_finished;
-	int current_pos;
-	int buf_usage;
+	struct timespec frame_dec_time;
+	struct timespec	frame_dur;
+	int		frame_finished;
+	int		buf_usage;
 };
 
 static enum audio_init_err audio_init_stream(struct audio *au);
-static enum audio_init_err audio_init_packet(AVPacket **packet, uint8_t * buffer);
+static enum audio_init_err audio_init_packet(AVPacket **packet, uint8_t *buffer);
 static enum audio_init_err audio_init_ao(struct audio *au);
 static enum audio_init_err audio_init_codec(struct audio *au, int stream, AVCodec *codec);
 static enum audio_play_err audio_handle_frame(struct audio *au);
+
+static int
+timespec_subtract(struct timespec *result,
+		  struct timespec *x,
+		  struct timespec *y);
 
 
 enum audio_init_err
@@ -78,31 +83,29 @@ audio_play_frame(struct audio *au)
 {
 	enum audio_play_err result = E_PLAY_OK;
 
-	if (au->current_pos == au->buf_usage) {
-	    au->frame_finished = 0;		
+	au->frame_finished = 0;
 
-	    if (av_read_frame(au->context, au->packet) < 0)
-		    result = E_PLAY_EOF;
-	    if (result == E_PLAY_OK) {
-		    if (au->packet->stream_index == au->stream_id) {
-			    result = audio_handle_frame(au);
-		    }
-	    }
+	if (av_read_frame(au->context, au->packet) < 0)
+		result = E_PLAY_EOF;
+	if (result == E_PLAY_OK) {
+		if (au->packet->stream_index == au->stream_id) {
+			result = audio_handle_frame(au);
+		}
 	}
 	if (result == E_PLAY_OK && au->frame_finished) {
 
-	    int bs = (au->buf_usage - au->current_pos);// % 1024;
-	    if (bs == 0)
-		bs = 1024;
-	    char* ptr = (char *)au->frame->extended_data[0];
+		char           *ptr = (char *)au->frame->extended_data[0];
 
-	    ao_play(au->ao_device,
-		ptr + au->current_pos,
-			bs);
-	    au->current_pos += bs;
+		ao_play(au->ao_device,
+			ptr,
+			au->buf_usage);
 
-       struct timespec tim2;
-	    nanosleep(&au->frame_dur, &tim2);
+		struct timespec	now, tim, tim2;
+		clock_gettime(CLOCK_REALTIME, &now); 
+		timespec_subtract(&tim2, &now, &au->frame_dec_time);
+		timespec_subtract(&tim, &au->frame_dur, &tim2);
+
+		nanosleep(&tim, &tim2);
 	}
 	return result;
 }
@@ -177,7 +180,7 @@ audio_init_codec(struct audio *au, int stream, AVCodec *codec)
 }
 
 static enum audio_init_err
-audio_init_packet(AVPacket **packet, uint8_t * buffer)
+audio_init_packet(AVPacket **packet, uint8_t *buffer)
 {
 	enum audio_init_err result = E_AINIT_OK;
 
@@ -221,6 +224,7 @@ static enum audio_play_err
 audio_handle_frame(struct audio *au)
 {
 	enum audio_play_err result = E_PLAY_OK;
+	clock_gettime(CLOCK_REALTIME, &au->frame_dec_time);
 
 	if (avcodec_decode_audio4(au->stream->codec,
 				  au->frame,
@@ -228,18 +232,47 @@ audio_handle_frame(struct audio *au)
 				  au->packet) < 0)
 		result = E_PLAY_DECODE_ERR;
 	if (result == E_PLAY_OK && au->frame_finished) {
-	    int64_t frame_ns;
-	    frame_ns = (au->packet->duration * NANOS_IN_SEC * au->stream->time_base.num)
-		    / au->stream->time_base.den;
-	    au->frame_dur.tv_nsec = frame_ns % NANOS_IN_SEC;
-	    au->frame_dur.tv_sec = (frame_ns - au->frame_dur.tv_nsec) / NANOS_IN_SEC;
+		int64_t		frame_ns;
+		frame_ns = (au->packet->duration * NANOS_IN_SEC * au->stream->time_base.num)
+			/ au->stream->time_base.den;
+
+		au->frame_dur.tv_nsec = frame_ns % NANOS_IN_SEC;
+		au->frame_dur.tv_sec = (frame_ns - au->frame_dur.tv_nsec) / NANOS_IN_SEC;
 
 		au->buf_usage = av_samples_get_buffer_size(NULL,
 						au->stream->codec->channels,
 						      au->frame->nb_samples,
 					      au->stream->codec->sample_fmt,
-						      1);
-		au->current_pos = 0;
+							   1);
 	}
 	return result;
+}
+
+/* The following purloined from
+ * http://www.gnu.org/software/libc/manual/html_node/Elapsed-Time.html
+ */
+static int
+timespec_subtract(struct timespec *result,
+		  struct timespec *x,
+		  struct timespec *y)
+{
+	/* Perform the carry for the later subtraction by updating y. */
+	if (x->tv_nsec < y->tv_nsec) {
+		int		nsec = (y->tv_nsec - x->tv_nsec) / NANOS_IN_SEC + 1;
+		y->tv_nsec -= NANOS_IN_SEC * nsec;
+		y->tv_sec += nsec;
+	}
+	if (x->tv_nsec - y->tv_nsec > NANOS_IN_SEC) {
+		int		nsec = (x->tv_nsec - y->tv_nsec) / NANOS_IN_SEC;
+		y->tv_nsec += NANOS_IN_SEC * nsec;
+		y->tv_sec -= nsec;
+	}
+	/*
+	 * Compute the time remaining to wait. tv_nsec is certainly positive.
+	 */
+	result->tv_sec = x->tv_sec - y->tv_sec;
+	result->tv_nsec = x->tv_nsec - y->tv_nsec;
+
+	/* Return 1 if result is negative. */
+	return x->tv_sec < y->tv_sec;
 }
