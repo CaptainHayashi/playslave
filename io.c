@@ -32,7 +32,7 @@ debug(int level, const char *format,...)
 	va_end(ap);
 }
 
-void
+enum error
 error(enum error code, const char *format,...)
 {
 	va_list		ap;
@@ -43,6 +43,8 @@ error(enum error code, const char *format,...)
 	fprintf(stderr, "\n");
 
 	va_end(ap);
+
+	return code;
 }
 
 int

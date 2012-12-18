@@ -7,8 +7,8 @@
 #include "io.h"
 #include "player.h"
 
-typedef void    (*nullary_cmd_ptr) (struct player_context *);
-typedef void    (*unary_cmd_ptr) (struct player_context *, const char *);
+typedef enum error (*nullary_cmd_ptr) (struct player_context *);
+typedef enum error (*unary_cmd_ptr) (struct player_context *, const char *);
 
 const int	WORD_LEN = 4;
 
@@ -53,6 +53,16 @@ unary_cmd_ptr	UNARY_FUNCS[NUM_UNARY_CMDS] = {
 
 static void	handle_command(struct player_context *play);
 
+static bool
+try_nullary(struct player_context *play,
+	    const char *buf, const char *arg, enum error *result);
+
+static bool
+try_unary(struct player_context *play,
+	  const char *buf, const char *arg, enum error *result);
+
+/****************************************************************************/
+
 void
 check_commands(struct player_context *play)
 {
@@ -60,6 +70,8 @@ check_commands(struct player_context *play)
 		handle_command(play);
 	}
 }
+
+/****************************************************************************/
 
 static void
 handle_command(struct player_context *play)
@@ -70,6 +82,7 @@ handle_command(struct player_context *play)
 	ssize_t		length;
 
 	length = getline(&buffer, &num_bytes, stdin);
+        debug(0, "got command: %s", buffer);
 
 	/* Remember to count newline */
 	if (length <= WORD_LEN) {
@@ -77,6 +90,7 @@ handle_command(struct player_context *play)
 	} else {
 		/* Find start of argument(s) */
 		ssize_t		i;
+
 		for (i = WORD_LEN; i < length && argument == NULL; i++) {
 			if (!isspace(buffer[i])) {
 				/* Assume this is where the arg is */
@@ -90,39 +104,65 @@ handle_command(struct player_context *play)
 		 * the null character, thus null-terminating the argument)
 		 */
 		ssize_t		j;
+
 		for (j = length - 1; isspace(buffer[j]); i--)
 			buffer[j] = '\0';
 
 		bool		gotcmd = false;
+		enum error	result;
 
-		/* Check nullary commands first */
-		int		n;
-		for (n = 0; n < NUM_NULLARY_CMDS && !gotcmd; n++) {
-			if (strncmp(NULLARY_WORDS[n], buffer, WORD_LEN) == 0) {
-				gotcmd = true;
-				if (argument == NULL) {
-					NULLARY_FUNCS[n] (play);
-				} else {
-					printf("WHAT Not expecting argument\n");
-				}
-			}
-		}
-
-		/* Now unaries */
-		int		u;
-		for (u = 0; u < NUM_UNARY_CMDS && !gotcmd; u++) {
-			if (strncmp(UNARY_WORDS[u], buffer, WORD_LEN) == 0) {
-				gotcmd = true;
-				if (argument != NULL) {
-					UNARY_FUNCS[u] (play, argument);
-				} else {
-					printf("WHAT Expecting argument\n");
-				}
-			}
-		}
-		if (!gotcmd) {
+		gotcmd = try_nullary(play, buffer, argument, &result);
+		if (!gotcmd)
+			gotcmd = try_unary(play, buffer, argument, &result);
+		if (!gotcmd)
 			printf("WHAT Not a valid command\n");
+	}
+
+        debug(0, "command processed");
+	free(buffer);
+}
+
+static bool
+try_nullary(struct player_context *play,
+	    const char *buf,
+	    const char *arg, enum error *result)
+{
+	int		n;
+	bool		gotcmd = false;
+
+	for (n = 0; n < NUM_NULLARY_CMDS && !gotcmd; n++) {
+		if (strncmp(NULLARY_WORDS[n], buf, WORD_LEN) == 0) {
+			gotcmd = true;
+			if (arg == NULL) {
+				*result = NULLARY_FUNCS[n] (play);
+			} else {
+				printf("WHAT Not expecting argument\n");
+			}
 		}
 	}
-	free(buffer);
+
+	return gotcmd;
+}
+
+static bool
+try_unary(struct player_context *play,
+	  const char *buf,
+	  const char *arg,
+	  enum error *result)
+{
+	int		u;
+	bool		gotcmd = false;
+
+	for (u = 0; u < NUM_UNARY_CMDS && !gotcmd; u++) {
+		if (strncmp(UNARY_WORDS[u], buf, WORD_LEN) == 0) {
+			gotcmd = true;
+			if (arg != NULL) {
+				*result = UNARY_FUNCS[u] (play, arg);
+			} else {
+				printf("WHAT Expecting argument\n");
+			}
+		}
+	}
+
+	return gotcmd;
 }

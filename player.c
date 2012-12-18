@@ -34,46 +34,97 @@ player_init(struct player_context **play,
 	return failure;
 }
 
-void
+enum error
 player_eject(struct player_context *play)
 {
-	if (play->au != NULL) {
-		audio_unload(play->au);
-		play->au = NULL;
+	enum error	result;
+
+	switch (play->state) {
+	case STOPPED:
+	case PLAYING:
+	case VOID:
+		if (play->au != NULL) {
+			audio_unload(play->au);
+			play->au = NULL;
+		}
+		play->state = EJECTED;
+		result = E_OK;
+		debug(0, "player ejected");
+		break;
+	case EJECTED:
+		/* Ejecting while ejected is harmless and common */
+		break;
+	case SHUTTING_DOWN:
+		result = error(E_BAD_STATE, "player is shutting down");
+		break;
+	default:
+		result = error(E_BAD_STATE, "unknown state");
 	}
-	play->state = EJECTED;
-	debug(0, "player ejected");
+
+	return result;
 }
 
-void
+enum error
 player_play(struct player_context *play)
 {
+	enum error	result;
+
 	switch (play->state) {
 	case STOPPED:
 		play->state = PLAYING;
+		result = E_OK;
 		break;
 	case PLAYING:
-		error(E_BAD_STATE_CHANGE, "already playing");
+		result = error(E_BAD_STATE, "already playing");
 		break;
 	case EJECTED:
-		error(E_BAD_STATE_CHANGE, "nothing loaded");
+		result = error(E_BAD_STATE, "nothing loaded");
+		break;
+	case VOID:
+		result = error(E_BAD_STATE, "init only to ejected");
+		break;
+	case SHUTTING_DOWN:
+		result = error(E_BAD_STATE, "player is shutting down");
 		break;
 	default:
-		error(E_BAD_STATE_CHANGE, "unknown state");
+		result = error(E_BAD_STATE, "unknown state");
 		break;
 	}
+
+	return result;
 }
 
-void
+enum error
 player_stop(struct player_context *play)
 {
-	play->state = STOPPED;
+	enum error	result;
+
+	switch (play->state) {
+	case PLAYING:
+		play->state = STOPPED;
+		result = E_OK;
+		break;
+	case STOPPED:
+		result = error(E_BAD_STATE, "already stopped");
+		break;
+	case EJECTED:
+		result = error(E_BAD_STATE, "can't stop - nothing loaded");
+		break;
+	case SHUTTING_DOWN:
+		result = error(E_BAD_STATE, "player is shutting down");
+		break;
+	default:
+		result = error(E_BAD_STATE, "unknown state");
+	}
+
+	return result;
 }
 
-void
+enum error
 player_load(struct player_context *play, const char *filename)
 {
-	int		err;
+	enum error	result;
+	enum audio_init_err err;
 
 	player_eject(play);
 
@@ -84,34 +135,37 @@ player_load(struct player_context *play, const char *filename)
 	if (err) {
 		switch (err) {
 		case E_AINIT_OPEN_INPUT:
-			error(E_NO_FILE, filename);
+			result = error(E_NO_FILE, filename);
 			break;
 		case E_AINIT_FIND_STREAM_INFO:
-			error(E_BAD_FILE, "can't find stream information");
+			result = error(E_BAD_FILE, "can't find stream info");
 			break;
 		case E_AINIT_DEVICE_OPEN_FAIL:
-			error(E_BAD_FILE, "can't open device");
+			result = error(E_BAD_FILE, "can't open device");
 			break;
 		case E_AINIT_NO_STREAM:
-			error(E_BAD_FILE, "can't find stream");
+			result = error(E_BAD_FILE, "can't find stream");
 			break;
 		case E_AINIT_CANNOT_ALLOC_AUDIO:
-			error(E_NO_MEM, "can't alloc audio structure");
+			result = error(E_NO_MEM, "can't alloc audio structure");
 			break;
 		case E_AINIT_CANNOT_ALLOC_PACKET:
-			error(E_NO_MEM, "can't alloc packet");
+			result = error(E_NO_MEM, "can't alloc packet");
 			break;
 		case E_AINIT_CANNOT_ALLOC_FRAME:
-			error(E_NO_MEM, "can't alloc frame");
+			result = error(E_NO_MEM, "can't alloc frame");
 			break;
 		default:
-			error(E_UNKNOWN, "unknown error");
+			result = error(E_UNKNOWN, "unknown error");
 			break;
 		}
 		player_eject(play);
 	} else {
 		play->state = STOPPED;
+		result = E_OK;
 	}
+
+	return result;
 }
 
 void
@@ -140,11 +194,15 @@ player_update(struct player_context *play)
 	}
 }
 
-void
+enum error
 player_shutdown(struct player_context *play)
 {
-	player_eject(play);
+	enum error result;
+
+        result = player_eject(play);
 	play->state = SHUTTING_DOWN;
+
+        return result;
 }
 
 enum player_state
