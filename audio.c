@@ -17,7 +17,6 @@ struct audio {
 	enum audio_play_err last_err;
 	/* libavformat state */
 	AVFormatContext *context;
-	AVCodec        *codec;
 	AVStream       *stream;
 	AVPacket       *packet;
 	AVFrame        *frame;
@@ -25,12 +24,11 @@ struct audio {
 	/* shared state */
 	uint8_t		buffer [BUFFER_SIZE];
 	int		frame_finished;
-	int		buf_usage;
 	char           *frame_ptr;
 	unsigned long	num_samples;
 	/* PortAudio state */
-	PaStream       *out_strm;
-	int		device_id;
+	PaStream       *out_strm;	/* Output stream */
+	int		device_id;	/* PortAudio device ID */
 };
 
 static enum audio_init_err audio_init_stream(struct audio *au);
@@ -213,7 +211,6 @@ audio_init_codec(struct audio *au, int stream, AVCodec *codec)
 	if (avcodec_open2(codec_context, codec, NULL) < 0)
 		result = E_AINIT_NO_CODEC;
 	if (result == E_AINIT_OK) {
-		au->codec = codec;
 		au->stream = au->context->streams[stream];
 		au->stream_id = stream;
 		result = audio_init_packet(&(au->packet), au->buffer);
@@ -225,9 +222,8 @@ audio_init_codec(struct audio *au, int stream, AVCodec *codec)
 			result = E_AINIT_CANNOT_ALLOC_FRAME;
 	}
 	if (result == E_AINIT_OK) {
-		debug(0, "codec: %s", au->codec->long_name);
 		debug(0, "stream id: %u", au->stream_id);
-		debug(0, "from ctx: %s", au->stream->codec->codec->long_name);
+		debug(0, "codec: %s", au->stream->codec->codec->long_name);
 	}
 	return result;
 }
@@ -324,11 +320,7 @@ audio_handle_frame(struct audio *au)
 		au->last_err = E_PLAY_DECODE_ERR;
 	}
 	if (result == paContinue && au->frame_finished) {
-		au->buf_usage = av_samples_get_buffer_size(NULL,
-						au->stream->codec->channels,
-						      au->frame->nb_samples,
-					      au->stream->codec->sample_fmt,
-							   1);
+		/* Record data that we'll use in the play loop */
 		au->frame_ptr = (char *)au->frame->extended_data[0];
 		au->num_samples = au->frame->nb_samples;
 	}
