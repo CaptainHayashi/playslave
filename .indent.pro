@@ -1,6 +1,8 @@
+-TPaError
 -TPaStream
 -TPaStreamCallbackTimeInfo
 -TPaStreamCallbackFlags
+-TPaStreamCallbackResult
 -TPaStreamParameters
 -TPaSampleFormat
 -TAVCodec

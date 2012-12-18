@@ -11,10 +11,10 @@
 #include "player.h"
 #include "audio.h"
 
-#define NANOS_IN_SEC 1000000000L
 #define BUFFER_SIZE FF_MIN_BUFFER_SIZE
 
 struct audio {
+	enum audio_play_err last_err;
 	/* libavformat state */
 	AVFormatContext *context;
 	AVCodec        *codec;
@@ -24,8 +24,6 @@ struct audio {
 	int		stream_id;
 	/* shared state */
 	uint8_t		buffer [BUFFER_SIZE];
-	struct timespec	frame_dec_time;
-	struct timespec	frame_dur;
 	int		frame_finished;
 	int		buf_usage;
 	char           *frame_ptr;
@@ -39,14 +37,14 @@ static enum audio_init_err audio_init_stream(struct audio *au);
 static enum audio_init_err audio_init_packet(AVPacket **packet, uint8_t *buffer);
 static enum audio_init_err audio_init_sink(struct audio *au);
 static enum audio_init_err audio_init_codec(struct audio *au, int stream, AVCodec *codec);
-static enum audio_play_err audio_handle_frame(struct audio *au);
+static PaStreamCallbackResult audio_handle_frame(struct audio *au);
 
 enum audio_init_err
 audio_load(struct audio **au,
 	   const char *filename,
 	   int device_id)
 {
-	int		result = E_AINIT_OK;
+	enum audio_init_err result = E_AINIT_OK;
 
 	if (*au != NULL) {
 		debug(0, "Audio structure exists, freeing");
@@ -77,11 +75,11 @@ audio_load(struct audio **au,
 enum error
 audio_start(struct audio *au)
 {
-	int		err;
+	PaError		err;
 	enum error	result = E_OK;
 
 	err = Pa_StartStream(au->out_strm);
-	if (err != paNoError)
+	if (err)
 		result = E_INTERNAL_ERROR;
 	else
 		debug(0, "audio started");
@@ -92,11 +90,11 @@ audio_start(struct audio *au)
 enum error
 audio_stop(struct audio *au)
 {
-	int		err;
+	PaError		err;
 	enum error	result = E_OK;
 
 	err = Pa_AbortStream(au->out_strm);
-	if (err != paNoError)
+	if (err)
 		result = E_INTERNAL_ERROR;
 	else
 		debug(0, "audio stopped");
@@ -112,35 +110,34 @@ audio_play_frame(const void *in,
 		 PaStreamCallbackFlags statusFlags,
 		 void *v_au)
 {
-	enum audio_play_err result = E_PLAY_OK;
+	PaStreamCallbackResult result = paContinue;
 	struct audio   *au = (struct audio *)v_au;
 	char           *cout = (char *)out;
 	unsigned long	frames_written = 0;
 
-	in = (void *)in;	/* Allow a safe ignore */
-	timeInfo = (void *)timeInfo;	/* And here */
+	in = (const void *)in;	/* Allow a safe ignore */
+	timeInfo = (const void *)timeInfo;	/* And here */
 	statusFlags = statusFlags | 0;	/* Also here */
 
-	debug(0, "asking for %u frames", frames_per_buf);
 
-
-	while (result == E_PLAY_OK && frames_written < frames_per_buf) {
-		debug(0, "frame %u", frames_written);
+	while (result == paContinue && frames_written < frames_per_buf) {
 		if (au->num_samples == 0) {
 			/* We need to decode more samples */
 
 			au->frame_finished = 0;
-			while (result == E_PLAY_OK && !au->frame_finished) {
-				if (av_read_frame(au->context, au->packet) < 0)
-					result = E_PLAY_EOF;
-				if (result == E_PLAY_OK &&
+			while (result == paContinue && !au->frame_finished) {
+				if (av_read_frame(au->context, au->packet) < 0) {
+					au->last_err = E_PLAY_EOF;
+					result = paComplete;
+				}
+				if (result == paContinue &&
 				au->packet->stream_index == au->stream_id) {
 					result = audio_handle_frame(au);
 				}
 			}
 
 		}
-		if (result == E_PLAY_OK && au->frame_finished) {
+		if (result == paContinue && au->frame_finished) {
 			size_t		bytes;
 			unsigned long	num_to_get;
 
@@ -154,7 +151,6 @@ audio_play_frame(const void *in,
 			bytes = (num_to_get
 				 * au->stream->codec->channels
 				 * av_get_bytes_per_sample(au->stream->codec->sample_fmt));
-			debug(0, "%u %u", au->frame_ptr, bytes);
 			memcpy(cout,
 			       au->frame_ptr,
 			       bytes);
@@ -164,7 +160,7 @@ audio_play_frame(const void *in,
 			au->num_samples -= num_to_get;
 		}
 	}
-	return result;
+	return (int)result;
 }
 
 void
@@ -315,24 +311,19 @@ audio_init_sink(struct audio *au)
 	return result;
 }
 
-static enum audio_play_err
+static PaStreamCallbackResult
 audio_handle_frame(struct audio *au)
 {
-	enum audio_play_err result = E_PLAY_OK;
+	PaStreamCallbackResult result = paContinue;
 
 	if (avcodec_decode_audio4(au->stream->codec,
 				  au->frame,
 				  &(au->frame_finished),
-				  au->packet) < 0)
-		result = E_PLAY_DECODE_ERR;
-	if (result == E_PLAY_OK && au->frame_finished) {
-		int64_t		frame_ns;
-		frame_ns = (au->packet->duration * NANOS_IN_SEC * au->stream->time_base.num)
-			/ au->stream->time_base.den;
-
-		au->frame_dur.tv_nsec = frame_ns % NANOS_IN_SEC;
-		au->frame_dur.tv_sec = (frame_ns - au->frame_dur.tv_nsec) / NANOS_IN_SEC;
-
+				  au->packet) < 0) {
+		result = paAbort;
+		au->last_err = E_PLAY_DECODE_ERR;
+	}
+	if (result == paContinue && au->frame_finished) {
 		au->buf_usage = av_samples_get_buffer_size(NULL,
 						au->stream->codec->channels,
 						      au->frame->nb_samples,
