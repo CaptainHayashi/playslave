@@ -1,25 +1,18 @@
+#define _POSIX_C_SOURCE 200809
+
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
-#include <assert.h>
 
+#include "audio.h"
 #include "io.h"
 #include "player.h"
-#include "audio.h"
 
 struct player_context {
 	enum player_state state;
 	int		device_id;
 	struct audio   *au;
-	char           *filename;
-
-	pthread_mutex_t	state_mutex;
-	pthread_cond_t	state_changed;
 };
-
-
-static void	player_set_state(struct player_context *play, enum player_state new);
-
 
 int
 player_init(struct player_context **play,
@@ -28,15 +21,11 @@ player_init(struct player_context **play,
 	int		failure = 0;
 
 	if (*play == NULL) {
-		*play = calloc(1, sizeof(struct player_context));
+		*play = calloc((size_t) 1, sizeof(struct player_context));
 		if (*play == NULL) {
 			failure = -1;
 		}
 	}
-	if (!failure)
-		failure = pthread_mutex_init(&(*play)->state_mutex, NULL);
-	if (!failure)
-		failure = pthread_cond_init(&(*play)->state_changed, NULL);
 	if (!failure) {
 		(*play)->device_id = device_id;
 	}
@@ -46,12 +35,8 @@ player_init(struct player_context **play,
 void
 player_free(struct player_context *play)
 {
-	pthread_mutex_destroy(&(play->state_mutex));
-	pthread_cond_destroy(&(play->state_changed));
-
-	if (play->filename)
-		free(play->filename);
-
+    if (play->au)
+        audio_unload(play->au);
 	free(play);
 }
 
@@ -68,7 +53,7 @@ player_eject(struct player_context *play)
 			audio_unload(play->au);
 			play->au = NULL;
 		}
-		player_set_state(play, EJECTED);
+		play->state = EJECTED;
 		result = E_OK;
 		debug(0, "player ejected");
 		break;
@@ -94,7 +79,7 @@ player_play(struct player_context *play)
 	case STOPPED:
 		result = audio_start(play->au);
 		if (result == E_OK)
-			player_set_state(play, PLAYING);
+			play->state = PLAYING;
 		break;
 	case PLAYING:
 		result = error(E_BAD_STATE, "already playing");
@@ -123,7 +108,7 @@ player_stop(struct player_context *play)
 
 	switch (play->state) {
 	case PLAYING:
-		player_set_state(play, STOPPED);
+		play->state = STOPPED;
                 result = audio_stop(play->au);
 		break;
 	case STOPPED:
@@ -154,7 +139,7 @@ player_load(struct player_context *play, const char *filename)
 	if (err) {
 		switch (err) {
 		case E_AINIT_OPEN_INPUT:
-			result = error(E_NO_FILE, play->filename);
+			result = error(E_NO_FILE, filename);
 			break;
 		case E_AINIT_FIND_STREAM_INFO:
 			result = error(E_BAD_FILE, "can't find stream info");
@@ -180,8 +165,8 @@ player_load(struct player_context *play, const char *filename)
 		}
 		player_eject(play);
 	} else {
-		debug(0, "loaded %s", play->filename);
-		player_set_state(play, STOPPED);
+		debug(0, "loaded %s", filename);
+		play->state = STOPPED;
 		result = E_OK;
 	}
 
@@ -221,7 +206,7 @@ player_shutdown(struct player_context *play)
 	enum error	result;
 
 	result = player_eject(play);
-	player_set_state(play, SHUTTING_DOWN);
+	play->state = SHUTTING_DOWN;
 
 	return result;
 }
@@ -230,15 +215,4 @@ enum player_state
 player_state(struct player_context *play)
 {
 	return play->state;
-}
-
-static void 
-player_set_state(struct player_context *play, enum player_state new)
-{
-	pthread_mutex_lock(&play->state_mutex);
-
-	play->state = new;
-	pthread_cond_signal(&play->state_changed);
-
-	pthread_mutex_unlock(&play->state_mutex);
 }

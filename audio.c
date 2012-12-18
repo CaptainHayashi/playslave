@@ -2,7 +2,6 @@
 
 #include <time.h>
 #include <stdint.h>
-#include <assert.h>
 
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
@@ -29,7 +28,7 @@ struct audio {
 	struct timespec	frame_dur;
 	int		frame_finished;
 	int		buf_usage;
-	char *frame_ptr;
+	char           *frame_ptr;
 	unsigned long	num_samples;
 	/* PortAudio state */
 	PaStream       *out_strm;
@@ -53,7 +52,7 @@ audio_load(struct audio **au,
 		debug(0, "Audio structure exists, freeing");
 		audio_unload(*au);
 	}
-	*au = calloc(1, sizeof(struct audio));
+	*au = calloc((size_t)1, sizeof(struct audio));
 	if (*au == NULL)
 		result = E_AINIT_CANNOT_ALLOC_AUDIO;
 	if (result == E_AINIT_OK) {
@@ -93,16 +92,16 @@ audio_start(struct audio *au)
 enum error
 audio_stop(struct audio *au)
 {
-    int err;
-    enum error result = E_OK;
+	int		err;
+	enum error	result = E_OK;
 
-    err = Pa_AbortStream(au->out_strm);
-    if (err != paNoError)
-	result = E_INTERNAL_ERROR;
-    else
-	debug(0, "audio stopped");
+	err = Pa_AbortStream(au->out_strm);
+	if (err != paNoError)
+		result = E_INTERNAL_ERROR;
+	else
+		debug(0, "audio stopped");
 
-    return result;
+	return result;
 }
 
 static int
@@ -115,8 +114,9 @@ audio_play_frame(const void *in,
 {
 	enum audio_play_err result = E_PLAY_OK;
 	struct audio   *au = (struct audio *)v_au;
+	char           *cout = (char *)out;
+	unsigned long	frames_written = 0;
 
-	char *cout = (char *) out;
 	in = (void *)in;	/* Allow a safe ignore */
 	timeInfo = (void *)timeInfo;	/* And here */
 	statusFlags = statusFlags | 0;	/* Also here */
@@ -124,14 +124,10 @@ audio_play_frame(const void *in,
 	debug(0, "asking for %u frames", frames_per_buf);
 
 
-	unsigned long	frames_written = 0;
 	while (result == E_PLAY_OK && frames_written < frames_per_buf) {
 		debug(0, "frame %u", frames_written);
 		if (au->num_samples == 0) {
 			/* We need to decode more samples */
-
-			assert(au->context);
-			assert(au->packet);
 
 			au->frame_finished = 0;
 			while (result == E_PLAY_OK && !au->frame_finished) {
@@ -145,18 +141,18 @@ audio_play_frame(const void *in,
 
 		}
 		if (result == E_PLAY_OK && au->frame_finished) {
-			/* How many samples do we have? */
-			unsigned long num_to_get;
+			size_t		bytes;
+			unsigned long	num_to_get;
 
+			/* How many samples do we have? */
 			if (au->num_samples > frames_per_buf - frames_written)
 				num_to_get = frames_per_buf - frames_written;
 			else
 				num_to_get = au->num_samples;
 
 			/* How many bytes does that translate into? */
-			int		bytes;
 			bytes = (num_to_get
-				* au->stream->codec->channels
+				 * au->stream->codec->channels
 				 * av_get_bytes_per_sample(au->stream->codec->sample_fmt));
 			debug(0, "%u %u", au->frame_ptr, bytes);
 			memcpy(cout,
@@ -245,7 +241,7 @@ audio_init_packet(AVPacket **packet, uint8_t *buffer)
 {
 	enum audio_init_err result = E_AINIT_OK;
 
-	*packet = calloc(1, sizeof(AVPacket));
+	*packet = calloc((size_t)1, sizeof(AVPacket));
 	if (*packet == NULL)
 		result = E_AINIT_CANNOT_ALLOC_PACKET;
 	if (result == E_AINIT_OK) {
@@ -271,7 +267,7 @@ audio_init_sink(struct audio *au)
 	 * hopefully cover most cases.
 	 */
 	PaSampleFormat	sf;
-	int bytes_per_sample;
+	int		bytes_per_sample;
 	switch (codec->sample_fmt) {
 	case AV_SAMPLE_FMT_U8:
 		sf = paUInt8;
@@ -293,6 +289,11 @@ audio_init_sink(struct audio *au)
 		result = E_AINIT_BAD_RATE;
 	}
 	if (result == E_AINIT_OK) {
+		unsigned long	frames_per_buf;
+		PaError		err;
+
+		frames_per_buf = (BUFFER_SIZE / bytes_per_sample) / codec->channels;
+
 		memset(&pars, 0, sizeof(pars));
 		pars.channelCount = codec->channels;
 		pars.device = dv;
@@ -300,12 +301,10 @@ audio_init_sink(struct audio *au)
 		pars.sampleFormat = sf;
 		pars.suggestedLatency = Pa_GetDeviceInfo(dv)->defaultLowOutputLatency;
 
-		int frames_per_buf = (BUFFER_SIZE / bytes_per_sample) / codec->channels;
-		int		err;
 		err = Pa_OpenStream(&au->out_strm,
 				    NULL,
 				    &pars,
-				    codec->sample_rate,
+				    (double)codec->sample_rate,
 				    frames_per_buf,
 				    paClipOff,
 				    audio_play_frame,

@@ -25,3 +25,9 @@ main
 
 # Vim swap
 *.sw[a-zA-Z]
+
+# Lint stuff
+*.ln
+
+# CTAGS
+tags

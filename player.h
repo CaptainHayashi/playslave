@@ -1,7 +1,7 @@
 #ifndef PLAYER_H
 #define PLAYER_H
 
-#include <pthread.h>
+#include "errors.h"
 
 struct player_context;
 enum player_state {
@@ -11,8 +11,6 @@ enum player_state {
         PLAYING,
         SHUTTING_DOWN
 };
-
-enum audio_init_err;
 
 int player_init(struct player_context **play,
                 int driver_id);
