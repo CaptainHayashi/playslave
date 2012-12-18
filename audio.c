@@ -2,52 +2,50 @@
 
 #include <time.h>
 #include <stdint.h>
+#include <assert.h>
 
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
-#include <ao/ao.h>
+#include <portaudio.h>
 
 #include "io.h"
 #include "player.h"
 #include "audio.h"
 
 #define NANOS_IN_SEC 1000000000L
-#define BUFFER_SIZE FF_MIN_BUFFER_SIZE + FF_INPUT_BUFFER_PADDING_SIZE
+#define BUFFER_SIZE FF_MIN_BUFFER_SIZE
 
 struct audio {
+	/* libavformat state */
 	AVFormatContext *context;
 	AVCodec        *codec;
 	AVStream       *stream;
 	AVPacket       *packet;
 	AVFrame        *frame;
 	int		stream_id;
-	int		ao_driver_id;
-	ao_option      *ao_options;
-	ao_device      *ao_device;
+	/* shared state */
 	uint8_t		buffer [BUFFER_SIZE];
-	struct timespec frame_dec_time;
+	struct timespec	frame_dec_time;
 	struct timespec	frame_dur;
 	int		frame_finished;
 	int		buf_usage;
+	char *frame_ptr;
+	unsigned long	num_samples;
+	/* PortAudio state */
+	PaStream       *out_strm;
+	int		device_id;
 };
 
 static enum audio_init_err audio_init_stream(struct audio *au);
 static enum audio_init_err audio_init_packet(AVPacket **packet, uint8_t *buffer);
-static enum audio_init_err audio_init_ao(struct audio *au);
+static enum audio_init_err audio_init_sink(struct audio *au);
 static enum audio_init_err audio_init_codec(struct audio *au, int stream, AVCodec *codec);
 static enum audio_play_err audio_handle_frame(struct audio *au);
-
-static int
-timespec_subtract(struct timespec *result,
-		  struct timespec *x,
-		  struct timespec *y);
-
 
 enum audio_init_err
 audio_load(struct audio **au,
 	   const char *filename,
-	   int ao_driver_id,
-	   ao_option *ao_options)
+	   int device_id)
 {
 	int		result = E_AINIT_OK;
 
@@ -59,8 +57,7 @@ audio_load(struct audio **au,
 	if (*au == NULL)
 		result = E_AINIT_CANNOT_ALLOC_AUDIO;
 	if (result == E_AINIT_OK) {
-		(*au)->ao_driver_id = ao_driver_id;
-		(*au)->ao_options = ao_options;
+		(*au)->device_id = device_id;
 
 		if (avformat_open_input(&((*au)->context),
 					filename,
@@ -78,34 +75,98 @@ audio_load(struct audio **au,
 	return result;
 }
 
-enum audio_play_err
-audio_play_frame(struct audio *au)
+enum error
+audio_start(struct audio *au)
+{
+	int		err;
+	enum error	result = E_OK;
+
+	err = Pa_StartStream(au->out_strm);
+	if (err != paNoError)
+		result = E_INTERNAL_ERROR;
+	else
+		debug(0, "audio started");
+
+	return result;
+}
+
+enum error
+audio_stop(struct audio *au)
+{
+    int err;
+    enum error result = E_OK;
+
+    err = Pa_AbortStream(au->out_strm);
+    if (err != paNoError)
+	result = E_INTERNAL_ERROR;
+    else
+	debug(0, "audio stopped");
+
+    return result;
+}
+
+static int
+audio_play_frame(const void *in,
+		 void *out,
+		 unsigned long frames_per_buf,
+		 const PaStreamCallbackTimeInfo *timeInfo,
+		 PaStreamCallbackFlags statusFlags,
+		 void *v_au)
 {
 	enum audio_play_err result = E_PLAY_OK;
+	struct audio   *au = (struct audio *)v_au;
 
-	au->frame_finished = 0;
+	char *cout = (char *) out;
+	in = (void *)in;	/* Allow a safe ignore */
+	timeInfo = (void *)timeInfo;	/* And here */
+	statusFlags = statusFlags | 0;	/* Also here */
 
-	if (av_read_frame(au->context, au->packet) < 0)
-		result = E_PLAY_EOF;
-	if (result == E_PLAY_OK) {
-		if (au->packet->stream_index == au->stream_id) {
-			result = audio_handle_frame(au);
+	debug(0, "asking for %u frames", frames_per_buf);
+
+
+	unsigned long	frames_written = 0;
+	while (result == E_PLAY_OK && frames_written < frames_per_buf) {
+		debug(0, "frame %u", frames_written);
+		if (au->num_samples == 0) {
+			/* We need to decode more samples */
+
+			assert(au->context);
+			assert(au->packet);
+
+			au->frame_finished = 0;
+			while (result == E_PLAY_OK && !au->frame_finished) {
+				if (av_read_frame(au->context, au->packet) < 0)
+					result = E_PLAY_EOF;
+				if (result == E_PLAY_OK &&
+				au->packet->stream_index == au->stream_id) {
+					result = audio_handle_frame(au);
+				}
+			}
+
 		}
-	}
-	if (result == E_PLAY_OK && au->frame_finished) {
+		if (result == E_PLAY_OK && au->frame_finished) {
+			/* How many samples do we have? */
+			unsigned long num_to_get;
 
-		char           *ptr = (char *)au->frame->extended_data[0];
+			if (au->num_samples > frames_per_buf - frames_written)
+				num_to_get = frames_per_buf - frames_written;
+			else
+				num_to_get = au->num_samples;
 
-		ao_play(au->ao_device,
-			ptr,
-			au->buf_usage);
-
-		struct timespec	now, tim, tim2;
-		clock_gettime(CLOCK_REALTIME, &now); 
-		timespec_subtract(&tim2, &now, &au->frame_dec_time);
-		timespec_subtract(&tim, &au->frame_dur, &tim2);
-
-		nanosleep(&tim, &tim2);
+			/* How many bytes does that translate into? */
+			int		bytes;
+			bytes = (num_to_get
+				* au->stream->codec->channels
+				 * av_get_bytes_per_sample(au->stream->codec->sample_fmt));
+			debug(0, "%u %u", au->frame_ptr, bytes);
+			memcpy(cout,
+			       au->frame_ptr,
+			       bytes);
+			cout += bytes;
+			au->frame_ptr += bytes;
+			frames_written += num_to_get;
+			au->num_samples -= num_to_get;
+		}
 	}
 	return result;
 }
@@ -113,10 +174,10 @@ audio_play_frame(struct audio *au)
 void
 audio_unload(struct audio *au)
 {
-	if (au->ao_device != NULL) {
-		ao_close(au->ao_device);
-		au->ao_device = NULL;
-		debug(0, "closed ao device");
+	if (au->out_strm != NULL) {
+		Pa_CloseStream(au->out_strm);
+		au->out_strm = NULL;
+		debug(0, "closed output stream");
 	}
 	if (au->context != NULL) {
 		avformat_close_input(&(au->context));
@@ -146,7 +207,7 @@ audio_init_stream(struct audio *au)
 	if (result == E_AINIT_OK)
 		result = audio_init_codec(au, stream, codec);
 	if (result == E_AINIT_OK)
-		result = audio_init_ao(au);
+		result = audio_init_sink(au);
 
 	return result;
 }
@@ -196,27 +257,62 @@ audio_init_packet(AVPacket **packet, uint8_t *buffer)
 }
 
 static enum audio_init_err
-audio_init_ao(struct audio *au)
+audio_init_sink(struct audio *au)
 {
 	enum audio_init_err result = E_AINIT_OK;
-
-	ao_sample_format sample_format;
-
 	AVCodecContext *codec = au->stream->codec;
+	int		dv = au->device_id;
 
-	debug(0, "%s", av_get_sample_fmt_name(codec->sample_fmt));
-	sample_format.bits = av_get_bytes_per_sample(codec->sample_fmt) * 8;
-	sample_format.channels = codec->channels;
-	sample_format.rate = codec->sample_rate;
-	sample_format.byte_format = AO_FMT_NATIVE;
-	sample_format.matrix = 0;
+	PaStreamParameters pars;
 
-	au->ao_device = ao_open_live(au->ao_driver_id,
-				     &sample_format,
-				     au->ao_options);
-	if (au->ao_device == NULL)
-		result = E_AINIT_DEVICE_OPEN_FAIL;
+	/*
+	 * Sample format conversion from libavformat's understanding
+	 * of it to portaudio's... this isn't perfect, but should
+	 * hopefully cover most cases.
+	 */
+	PaSampleFormat	sf;
+	int bytes_per_sample;
+	switch (codec->sample_fmt) {
+	case AV_SAMPLE_FMT_U8:
+		sf = paUInt8;
+		bytes_per_sample = 1;
+		break;
+	case AV_SAMPLE_FMT_S16:
+		sf = paInt16;
+		bytes_per_sample = 2;
+		break;
+	case AV_SAMPLE_FMT_S32:
+		sf = paInt32;
+		bytes_per_sample = 4;
+		break;
+	case AV_SAMPLE_FMT_FLT:
+		sf = paFloat32;
+		bytes_per_sample = 4;
+		break;
+	default:
+		result = E_AINIT_BAD_RATE;
+	}
+	if (result == E_AINIT_OK) {
+		memset(&pars, 0, sizeof(pars));
+		pars.channelCount = codec->channels;
+		pars.device = dv;
+		pars.hostApiSpecificStreamInfo = NULL;
+		pars.sampleFormat = sf;
+		pars.suggestedLatency = Pa_GetDeviceInfo(dv)->defaultLowOutputLatency;
 
+		int frames_per_buf = (BUFFER_SIZE / bytes_per_sample) / codec->channels;
+		int		err;
+		err = Pa_OpenStream(&au->out_strm,
+				    NULL,
+				    &pars,
+				    codec->sample_rate,
+				    frames_per_buf,
+				    paClipOff,
+				    audio_play_frame,
+				    (void *)au);
+		if (err)
+			result = E_AINIT_DEVICE_OPEN_FAIL;
+	}
 	return result;
 }
 
@@ -224,7 +320,6 @@ static enum audio_play_err
 audio_handle_frame(struct audio *au)
 {
 	enum audio_play_err result = E_PLAY_OK;
-	clock_gettime(CLOCK_REALTIME, &au->frame_dec_time);
 
 	if (avcodec_decode_audio4(au->stream->codec,
 				  au->frame,
@@ -244,35 +339,8 @@ audio_handle_frame(struct audio *au)
 						      au->frame->nb_samples,
 					      au->stream->codec->sample_fmt,
 							   1);
+		au->frame_ptr = (char *)au->frame->extended_data[0];
+		au->num_samples = au->frame->nb_samples;
 	}
 	return result;
-}
-
-/* The following purloined from
- * http://www.gnu.org/software/libc/manual/html_node/Elapsed-Time.html
- */
-static int
-timespec_subtract(struct timespec *result,
-		  struct timespec *x,
-		  struct timespec *y)
-{
-	/* Perform the carry for the later subtraction by updating y. */
-	if (x->tv_nsec < y->tv_nsec) {
-		int		nsec = (y->tv_nsec - x->tv_nsec) / NANOS_IN_SEC + 1;
-		y->tv_nsec -= NANOS_IN_SEC * nsec;
-		y->tv_sec += nsec;
-	}
-	if (x->tv_nsec - y->tv_nsec > NANOS_IN_SEC) {
-		int		nsec = (x->tv_nsec - y->tv_nsec) / NANOS_IN_SEC;
-		y->tv_nsec += NANOS_IN_SEC * nsec;
-		y->tv_sec -= nsec;
-	}
-	/*
-	 * Compute the time remaining to wait. tv_nsec is certainly positive.
-	 */
-	result->tv_sec = x->tv_sec - y->tv_sec;
-	result->tv_nsec = x->tv_nsec - y->tv_nsec;
-
-	/* Return 1 if result is negative. */
-	return x->tv_sec < y->tv_sec;
 }

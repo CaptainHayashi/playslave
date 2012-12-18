@@ -2,7 +2,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <libavformat/avformat.h>
-#include <ao/ao.h>
+#include <portaudio.h>
 #include <stdio.h>
 #include <string.h>
 #include "io.h"
@@ -37,9 +37,6 @@ audio_main(void *arg)
             case SHUTTING_DOWN:
                 /* Thread is going to exit on next turn */
                 break;
-            case PLAYING:
-                player_update(play);
-                break;
             case LOADING:
                 player_do_load(play);
                 break;
@@ -55,24 +52,34 @@ audio_main(void *arg)
 int
 main(int argc, char *argv[])
 {
+        if (Pa_Initialize() != paNoError) {
+            error(3, "couldn't init portaudio");
+            exit(3);
+        }
+
+        int numDevices = Pa_GetDeviceCount();
+
 	if (argc < 2) {
 		error(3, "specify as argument to command");
+
+                int i;
+                const PaDeviceInfo *dev;
+
+                for (i = 0; i < numDevices; i++) {
+                    dev = Pa_GetDeviceInfo(i);
+                    debug(0, dev->name);
+                }
+
 		exit(3);
 	}
-	ao_initialize();
-	int		driver_id = ao_default_driver_id();
-	if (driver_id < 0) {
-		error(3, "couldn't get default libao driver");
-		exit(3);
-	}
-	ao_option      *options = NULL;
-	ao_append_option(&options, "id", argv[1]);
+
+        int driver_id = (int) strtol(argv[1], NULL, 10);
 
 	struct player_context *context = NULL;
 
 	av_register_all();
 
-	if (player_init(&context, driver_id, options) < 0) {
+	if (player_init(&context, driver_id) < 0) {
 		error(2, "maybe out of memory?");
 		exit(1);
 	}
@@ -93,8 +100,8 @@ main(int argc, char *argv[])
 
         pthread_join(at, NULL);
 
-	ao_shutdown();
-	pthread_exit(NULL);
+        Pa_Terminate();
 
+	pthread_exit(NULL);
 	return 0;
 }

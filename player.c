@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
 #include <stdint.h>
@@ -9,23 +10,21 @@
 
 struct player_context {
 	enum player_state state;
-	int		ao_driver_id;
-	ao_option      *ao_options;
+	int		device_id;
 	struct audio   *au;
-        char *filename;
+	char           *filename;
 
-        pthread_mutex_t state_mutex;
-        pthread_cond_t state_changed;
+	pthread_mutex_t	state_mutex;
+	pthread_cond_t	state_changed;
 };
 
 
-static void player_set_state(struct player_context *play, enum player_state new);
+static void	player_set_state(struct player_context *play, enum player_state new);
 
 
 int
 player_init(struct player_context **play,
-	    int ao_driver_id,
-	    ao_option * ao_options)
+	    int device_id)
 {
 	int		failure = 0;
 
@@ -35,13 +34,12 @@ player_init(struct player_context **play,
 			failure = -1;
 		}
 	}
-	if (!failure) 
-            failure = pthread_mutex_init(&(*play)->state_mutex, NULL); 
-        if (!failure)
-            failure = pthread_cond_init(&(*play)->state_changed, NULL);
-        if (!failure) {
-		(*play)->ao_driver_id = ao_driver_id;
-		(*play)->ao_options = ao_options;
+	if (!failure)
+		failure = pthread_mutex_init(&(*play)->state_mutex, NULL);
+	if (!failure)
+		failure = pthread_cond_init(&(*play)->state_changed, NULL);
+	if (!failure) {
+		(*play)->device_id = device_id;
 	}
 	return failure;
 }
@@ -49,13 +47,13 @@ player_init(struct player_context **play,
 void
 player_free(struct player_context *play)
 {
-    pthread_mutex_destroy(&(play->state_mutex));
-    pthread_cond_destroy(&(play->state_changed));
+	pthread_mutex_destroy(&(play->state_mutex));
+	pthread_cond_destroy(&(play->state_changed));
 
-    if (play->filename)
-        free(play->filename);
+	if (play->filename)
+		free(play->filename);
 
-    free(play);
+	free(play);
 }
 
 enum error
@@ -95,12 +93,13 @@ player_play(struct player_context *play)
 
 	switch (play->state) {
 	case STOPPED:
-		player_set_state(play, PLAYING);
-		result = E_OK;
+		result = audio_start(play->au);
+		if (result == E_OK)
+			player_set_state(play, PLAYING);
 		break;
-        case LOADING:
-                result = error(E_BAD_STATE, "not loaded yet");
-                break;
+	case LOADING:
+		result = error(E_BAD_STATE, "not loaded yet");
+		break;
 	case PLAYING:
 		result = error(E_BAD_STATE, "already playing");
 		break;
@@ -129,7 +128,7 @@ player_stop(struct player_context *play)
 	switch (play->state) {
 	case PLAYING:
 		player_set_state(play, STOPPED);
-		result = E_OK;
+                result = audio_stop(play->au);
 		break;
 	case STOPPED:
 		result = error(E_BAD_STATE, "already stopped");
@@ -153,31 +152,30 @@ player_stop(struct player_context *play)
 enum error
 player_load(struct player_context *play, const char *filename)
 {
-    enum error err;
-    err = player_eject(play);
-    if (!err) {
-        /* This should be enough to tell the audio thread to start
-         * loading the file.
-         */
-        if (play->filename)
-            free (play->filename);
-        play->filename = strdup(filename);
-        player_set_state(play, LOADING);
-    }
-
-    return err;
+	enum error	err;
+	err = player_eject(play);
+	if (!err) {
+		/*
+		 * This should be enough to tell the audio thread to start
+		 * loading the file.
+		 */
+		if (play->filename)
+			free(play->filename);
+		play->filename = strdup(filename);
+		player_set_state(play, LOADING);
+	}
+	return err;
 }
 
 enum error
 player_do_load(struct player_context *play)
 {
 	enum error	result;
-        enum audio_init_err err;
+	enum audio_init_err err;
 
 	err = audio_load(&(play->au),
 			 play->filename,
-			 play->ao_driver_id,
-			 play->ao_options);
+			 play->device_id);
 	if (err) {
 		switch (err) {
 		case E_AINIT_OPEN_INPUT:
@@ -207,7 +205,7 @@ player_do_load(struct player_context *play)
 		}
 		player_eject(play);
 	} else {
-            debug(0, "loaded %s", play->filename);
+		debug(0, "loaded %s", play->filename);
 		player_set_state(play, STOPPED);
 		result = E_OK;
 	}
@@ -216,20 +214,21 @@ player_do_load(struct player_context *play)
 }
 
 void
-player_on_state_change(struct player_context *play, void (*cb)(struct player_context *))
+player_on_state_change(struct player_context *play, void (*cb) (struct player_context *))
 {
-        pthread_mutex_lock(&play->state_mutex);
-        pthread_cond_wait(&play->state_changed, &play->state_mutex);
+	pthread_mutex_lock(&play->state_mutex);
+	pthread_cond_wait(&play->state_changed, &play->state_mutex);
 
-        cb(play);
-        
-        pthread_mutex_unlock(&play->state_mutex);
+	cb(play);
+
+	pthread_mutex_unlock(&play->state_mutex);
 }
 
 void
 player_update(struct player_context *play)
 {
-	if (play->state == PLAYING) {
+	play = (void *)play;
+/*	if (play->state == PLAYING) {
 		assert(play->au != NULL);
 
 		int		err;
@@ -249,18 +248,18 @@ player_update(struct player_context *play)
 			player_eject(play);
 
 		}
-	}
+	}*/
 }
 
 enum error
 player_shutdown(struct player_context *play)
 {
-	enum error result;
+	enum error	result;
 
-        result = player_eject(play);
+	result = player_eject(play);
 	player_set_state(play, SHUTTING_DOWN);
 
-        return result;
+	return result;
 }
 
 enum player_state
@@ -269,12 +268,13 @@ player_state(struct player_context *play)
 	return play->state;
 }
 
-static void player_set_state(struct player_context *play, enum player_state new)
+static void 
+player_set_state(struct player_context *play, enum player_state new)
 {
-    pthread_mutex_lock(&play->state_mutex);
+	pthread_mutex_lock(&play->state_mutex);
 
-    play->state = new;
-    pthread_cond_signal(&play->state_changed);
+	play->state = new;
+	pthread_cond_signal(&play->state_changed);
 
-    pthread_mutex_unlock(&play->state_mutex);
+	pthread_mutex_unlock(&play->state_mutex);
 }

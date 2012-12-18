@@ -1,16 +1,16 @@
 #include "player.h"
 
 struct audio;
+enum error;
 
 enum audio_init_err
 audio_load(struct audio **au, const char *filename,
-	   int ao_driver_id,
-	   ao_option * ao_options);
+	   int device_id);
 
 void		audio_unload(struct audio *au);
 
-/* Plays the current frame, if any such frames are available. */
-enum audio_play_err audio_play_frame(struct audio *au);
+enum error	audio_start(struct audio *au);
+enum error	audio_stop(struct audio *au);
 
 
 enum audio_init_err {
@@ -23,6 +23,7 @@ enum audio_init_err {
 	E_AINIT_CANNOT_ALLOC_AUDIO,
 	E_AINIT_CANNOT_ALLOC_PACKET,
 	E_AINIT_CANNOT_ALLOC_FRAME,
+	E_AINIT_BAD_RATE,
 };
 
 enum audio_play_err {

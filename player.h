@@ -2,7 +2,6 @@
 #define PLAYER_H
 
 #include <pthread.h>
-#include <ao/ao.h>
 
 struct player_context;
 enum player_state {
@@ -17,8 +16,7 @@ enum player_state {
 enum audio_init_err;
 
 int player_init(struct player_context **play,
-                int ao_driver_id,
-                ao_option *ao_options);
+                int driver_id);
 void player_free(struct player_context *play);
 
 void player_on_state_change(struct player_context *play, void (*cb)(struct player_context *));

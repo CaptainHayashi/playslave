@@ -1,3 +1,8 @@
+-TPaStream
+-TPaStreamCallbackTimeInfo
+-TPaStreamCallbackFlags
+-TPaStreamParameters
+-TPaSampleFormat
 -TAVCodec
 -TAVFormatContext
 -TAVFrame
@@ -12,9 +17,6 @@
 -TSTAILQ_HEAD
 -TTAILQ_ENTRY
 -TTAILQ_HEAD
--Tao_option
--Tao_sample_format
--Tav_device
 -Tbool
 -Tfd_mask
 -Tfd_set
