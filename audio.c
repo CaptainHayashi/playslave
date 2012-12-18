@@ -11,8 +11,7 @@
 #include "player.h"
 #include "audio.h"
 
-/* Yes, I know this is wrong */
-#define NANOS_IN_SEC 900000000L
+#define NANOS_IN_SEC 1000000000L
 #define BUFFER_SIZE FF_MIN_BUFFER_SIZE + FF_INPUT_BUFFER_PADDING_SIZE
 
 struct audio {

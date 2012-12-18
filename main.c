@@ -9,35 +9,50 @@
 #include "cmd.h"
 #include "player.h"
 
-void 
+void
 main_loop(struct player_context *context)
 {
 	while (player_state(context) != SHUTTING_DOWN
 	       && !feof(stdin)) {
 		check_commands(context);
-		player_update(context);
 	}
 }
 
 void
 audio_state_changed(struct player_context *play)
 {
-        debug(0, "STATE CHANGED OMG %u", player_state(play));
+    play = (void*) play;
 }
 
-void *
+void           *
 audio_main(void *arg)
 {
-    struct player_context *play = (struct player_context*) arg;
+	struct player_context *play = (struct player_context *)arg;
 
-    while (player_state(play) != SHUTTING_DOWN) {
-        player_on_state_change(play, audio_state_changed);
-    }
+        enum player_state state;
+	for (state = player_state(play);
+               state != SHUTTING_DOWN;
+               state = player_state(play)) {
+            switch(state) {
+            case SHUTTING_DOWN:
+                /* Thread is going to exit on next turn */
+                break;
+            case PLAYING:
+                player_update(play);
+                break;
+            case LOADING:
+                player_do_load(play);
+                break;
+            default:
+                /* Wait for another state. */
+		player_on_state_change(play, audio_state_changed);
+            }
+	}
 
-    pthread_exit(NULL);
+	pthread_exit(NULL);
 }
 
-int 
+int
 main(int argc, char *argv[])
 {
 	if (argc < 2) {
@@ -62,18 +77,24 @@ main(int argc, char *argv[])
 		exit(1);
 	}
 
-        pthread_t at;
-        int at_err = pthread_create(&at, NULL, audio_main, context);
-        if (at_err) {
-            error(2, "couldn't make a thread");
-            exit(2);
-        }
+        pthread_attr_t attr;
+       pthread_attr_init(&attr);
+       pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+       pthread_t	at;
+	int		at_err = pthread_create(&at, &attr, audio_main, context);
+	if (at_err) {
+		error(2, "couldn't make a thread");
+		exit(2);
+	}
+        pthread_attr_destroy(&attr);
 
-        player_eject(context);
+	player_eject(context);
 	main_loop(context);
 
+        pthread_join(at, NULL);
+
 	ao_shutdown();
-        pthread_exit(NULL);
+	pthread_exit(NULL);
 
 	return 0;
 }

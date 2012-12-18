@@ -1,3 +1,4 @@
+#include <string.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <assert.h>
@@ -11,6 +12,7 @@ struct player_context {
 	int		ao_driver_id;
 	ao_option      *ao_options;
 	struct audio   *au;
+        char *filename;
 
         pthread_mutex_t state_mutex;
         pthread_cond_t state_changed;
@@ -49,6 +51,11 @@ player_free(struct player_context *play)
 {
     pthread_mutex_destroy(&(play->state_mutex));
     pthread_cond_destroy(&(play->state_changed));
+
+    if (play->filename)
+        free(play->filename);
+
+    free(play);
 }
 
 enum error
@@ -91,6 +98,9 @@ player_play(struct player_context *play)
 		player_set_state(play, PLAYING);
 		result = E_OK;
 		break;
+        case LOADING:
+                result = error(E_BAD_STATE, "not loaded yet");
+                break;
 	case PLAYING:
 		result = error(E_BAD_STATE, "already playing");
 		break;
@@ -124,6 +134,9 @@ player_stop(struct player_context *play)
 	case STOPPED:
 		result = error(E_BAD_STATE, "already stopped");
 		break;
+	case LOADING:
+		result = error(E_BAD_STATE, "can't stop - still loading");
+		break;
 	case EJECTED:
 		result = error(E_BAD_STATE, "can't stop - nothing loaded");
 		break;
@@ -140,19 +153,35 @@ player_stop(struct player_context *play)
 enum error
 player_load(struct player_context *play, const char *filename)
 {
-	enum error	result;
-	enum audio_init_err err;
+    enum error err;
+    err = player_eject(play);
+    if (!err) {
+        /* This should be enough to tell the audio thread to start
+         * loading the file.
+         */
+        if (play->filename)
+            free (play->filename);
+        play->filename = strdup(filename);
+        player_set_state(play, LOADING);
+    }
 
-	player_eject(play);
+    return err;
+}
+
+enum error
+player_do_load(struct player_context *play)
+{
+	enum error	result;
+        enum audio_init_err err;
 
 	err = audio_load(&(play->au),
-			 filename,
+			 play->filename,
 			 play->ao_driver_id,
 			 play->ao_options);
 	if (err) {
 		switch (err) {
 		case E_AINIT_OPEN_INPUT:
-			result = error(E_NO_FILE, filename);
+			result = error(E_NO_FILE, play->filename);
 			break;
 		case E_AINIT_FIND_STREAM_INFO:
 			result = error(E_BAD_FILE, "can't find stream info");
@@ -178,6 +207,7 @@ player_load(struct player_context *play, const char *filename)
 		}
 		player_eject(play);
 	} else {
+            debug(0, "loaded %s", play->filename);
 		player_set_state(play, STOPPED);
 		result = E_OK;
 	}
