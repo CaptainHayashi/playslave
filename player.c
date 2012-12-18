@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <string.h>
-#include <pthread.h>
 #include <stdint.h>
 #include <assert.h>
 
@@ -97,9 +96,6 @@ player_play(struct player_context *play)
 		if (result == E_OK)
 			player_set_state(play, PLAYING);
 		break;
-	case LOADING:
-		result = error(E_BAD_STATE, "not loaded yet");
-		break;
 	case PLAYING:
 		result = error(E_BAD_STATE, "already playing");
 		break;
@@ -133,9 +129,6 @@ player_stop(struct player_context *play)
 	case STOPPED:
 		result = error(E_BAD_STATE, "already stopped");
 		break;
-	case LOADING:
-		result = error(E_BAD_STATE, "can't stop - still loading");
-		break;
 	case EJECTED:
 		result = error(E_BAD_STATE, "can't stop - nothing loaded");
 		break;
@@ -152,29 +145,11 @@ player_stop(struct player_context *play)
 enum error
 player_load(struct player_context *play, const char *filename)
 {
-	enum error	err;
-	err = player_eject(play);
-	if (!err) {
-		/*
-		 * This should be enough to tell the audio thread to start
-		 * loading the file.
-		 */
-		if (play->filename)
-			free(play->filename);
-		play->filename = strdup(filename);
-		player_set_state(play, LOADING);
-	}
-	return err;
-}
-
-enum error
-player_do_load(struct player_context *play)
-{
 	enum error	result;
 	enum audio_init_err err;
 
 	err = audio_load(&(play->au),
-			 play->filename,
+			 filename,
 			 play->device_id);
 	if (err) {
 		switch (err) {
@@ -211,17 +186,6 @@ player_do_load(struct player_context *play)
 	}
 
 	return result;
-}
-
-void
-player_on_state_change(struct player_context *play, void (*cb) (struct player_context *))
-{
-	pthread_mutex_lock(&play->state_mutex);
-	pthread_cond_wait(&play->state_changed, &play->state_mutex);
-
-	cb(play);
-
-	pthread_mutex_unlock(&play->state_mutex);
 }
 
 void

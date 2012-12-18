@@ -1,0 +1,4 @@
+-posix-lib
++skip-sys-headers
+-I/usr/local/include/ffmpeg1
+-I/usr/local/include/portaudio2

@@ -7,7 +7,6 @@ struct player_context;
 enum player_state {
         VOID,
         EJECTED,
-        LOADING,
         STOPPED,
         PLAYING,
         SHUTTING_DOWN
@@ -27,8 +26,6 @@ enum error player_play(struct player_context *play);
 enum error player_stop(struct player_context *play);
 enum error player_load(struct player_context *play, const char *filename);
 enum error player_shutdown(struct player_context *play);
-
-enum error player_do_load(struct player_context *play);
 
 void player_update(struct player_context *play);
 
