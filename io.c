@@ -1,20 +1,46 @@
-#include <stdio.h>
+/*-
+ * io.c - common standard input/output functions
+ * Copyright (C) 2012  University Radio York Computing Team
+ *
+ * This file is a part of playslave.
+ *
+ * playslave is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published
+ * by the Free Software Foundation; either version 2 of the License,
+ * or (at your option) any later version.
+ *
+ * playslave is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with playslave; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301, USA.
+ */
 #include <stdarg.h>
-#include <sys/time.h>
-#include <sys/types.h>
+#include <stdio.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "io.h"
 
+/* TODO: move to errors.c? */
 const char     *ERRORS[NUM_ERRORS] = {
-	"ApparentlyNotAnError",
-	"FileNotFound",
-	"BadFile",
-	"BadStateChange",
-	"BadConfig",
-	"InternalError",
-	"NoMem",
-	"???",
+	"OK",			/* E_OK */
+	/* User errors */
+	"NO_FILE",		/* E_NO_FILE */
+	"BAD_STATE",		/* E_BAD_STATE */
+	/* Environment errors */
+	"BAD_FILE",		/* E_BAD_FILE */
+	"BAD_CONFIG",		/* E_BAD_CONFIG */
+	/* System errors */
+	"AUDIO_INIT_FAIL",	/* E_AUDIO_INIT_FAIL */
+	"INTERNAL_ERROR",	/* E_INTERNAL_ERROR */
+	"NO_MEM",		/* E_NO_MEM */
+	/* Misc */
+	"UNKNOWN",		/* E_UNKNOWN */
 };
 
 void

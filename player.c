@@ -1,3 +1,24 @@
+/*-
+ * player.c - high-level player structure
+ * Copyright (C) 2012  University Radio York Computing Team
+ *
+ * This file is a part of playslave.
+ *
+ * playslave is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published
+ * by the Free Software Foundation; either version 2 of the License,
+ * or (at your option) any later version.
+ *
+ * playslave is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with playslave; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301, USA.
+ */
 #define _POSIX_C_SOURCE 200809
 
 #include <stdint.h>
@@ -9,43 +30,44 @@
 #include "player.h"
 
 struct player {
-	enum player_state state;
-	int		device_id;
-	struct audio   *au;
+	struct audio   *au;	/* Audio backend structure */
+
+	enum state	cstate;	/* Current state of player FSM */
+	int		device;	/* Device ID given at program start */
 };
 
-int
+enum error
 player_init(struct player **play,
-	    int device_id)
+	    int device)
 {
-	int		failure = 0;
+	enum error	err = E_OK;
 
 	if (*play == NULL) {
-		*play = calloc((size_t) 1, sizeof(struct player));
+		*play = calloc((size_t)1, sizeof(struct player));
 		if (*play == NULL) {
-			failure = -1;
+			err = E_NO_MEM;
 		}
 	}
-	if (!failure) {
-		(*play)->device_id = device_id;
+	if (!err) {
+		(*play)->device = device;
 	}
-	return failure;
+	return err;
 }
 
 void
 player_free(struct player *play)
 {
-    if (play->au)
-        audio_unload(play->au);
+	if (play->au)
+		audio_unload(play->au);
 	free(play);
 }
 
 enum error
-player_eject(struct player *play)
+player_ejct(struct player *play)
 {
 	enum error	result;
 
-	switch (play->state) {
+	switch (play->cstate) {
 	case STOPPED:
 	case PLAYING:
 	case VOID:
@@ -53,14 +75,14 @@ player_eject(struct player *play)
 			audio_unload(play->au);
 			play->au = NULL;
 		}
-		play->state = EJECTED;
+		play->cstate = EJECTED;
 		result = E_OK;
 		debug(0, "player ejected");
 		break;
 	case EJECTED:
 		/* Ejecting while ejected is harmless and common */
 		break;
-	case SHUTTING_DOWN:
+	case QUITTING:
 		result = error(E_BAD_STATE, "player is shutting down");
 		break;
 	default:
@@ -75,11 +97,11 @@ player_play(struct player *play)
 {
 	enum error	result;
 
-	switch (play->state) {
+	switch (play->cstate) {
 	case STOPPED:
 		result = audio_start(play->au);
 		if (result == E_OK)
-			play->state = PLAYING;
+			play->cstate = PLAYING;
 		break;
 	case PLAYING:
 		result = error(E_BAD_STATE, "already playing");
@@ -90,7 +112,7 @@ player_play(struct player *play)
 	case VOID:
 		result = error(E_BAD_STATE, "init only to ejected");
 		break;
-	case SHUTTING_DOWN:
+	case QUITTING:
 		result = error(E_BAD_STATE, "player is shutting down");
 		break;
 	default:
@@ -106,10 +128,11 @@ player_stop(struct player *play)
 {
 	enum error	result;
 
-	switch (play->state) {
+	switch (play->cstate) {
 	case PLAYING:
-		play->state = STOPPED;
-                result = audio_stop(play->au);
+		result = audio_stop(play->au);
+		if (result == E_OK)
+			play->cstate = STOPPED;
 		break;
 	case STOPPED:
 		result = error(E_BAD_STATE, "already stopped");
@@ -117,7 +140,7 @@ player_stop(struct player *play)
 	case EJECTED:
 		result = error(E_BAD_STATE, "can't stop - nothing loaded");
 		break;
-	case SHUTTING_DOWN:
+	case QUITTING:
 		result = error(E_BAD_STATE, "player is shutting down");
 		break;
 	default:
@@ -135,7 +158,7 @@ player_load(struct player *play, const char *filename)
 
 	err = audio_load(&(play->au),
 			 filename,
-			 play->device_id);
+			 play->device);
 	if (err) {
 		switch (err) {
 		case E_AINIT_OPEN_INPUT:
@@ -163,10 +186,10 @@ player_load(struct player *play, const char *filename)
 			result = error(E_UNKNOWN, "unknown error");
 			break;
 		}
-		player_eject(play);
+		player_ejct(play);
 	} else {
 		debug(0, "loaded %s", filename);
-		play->state = STOPPED;
+		play->cstate = STOPPED;
 		result = E_OK;
 	}
 
@@ -177,7 +200,7 @@ void
 player_update(struct player *play)
 {
 	play = (void *)play;
-/*	if (play->state == PLAYING) {
+/*	if (play->cstate == PLAYING) {
 		assert(play->au != NULL);
 
 		int		err;
@@ -201,18 +224,18 @@ player_update(struct player *play)
 }
 
 enum error
-player_shutdown(struct player *play)
+player_quit(struct player *play)
 {
 	enum error	result;
 
-	result = player_eject(play);
-	play->state = SHUTTING_DOWN;
+	result = player_ejct(play);
+	play->cstate = QUITTING;
 
 	return result;
 }
 
-enum player_state
+enum state
 player_state(struct player *play)
 {
-	return play->state;
+	return play->cstate;
 }
