@@ -43,5 +43,6 @@ audio_load(struct audio **au,	/* Location for the audio struct pointer */
 void		audio_unload(struct audio *au);	/* Frees an audio struct */
 enum error	audio_start(struct audio *au);	/* Starts playback */
 enum error	audio_stop(struct audio *au);	/* Stops playback */
+enum error	audio_error(struct audio *au);	/* Gets last playback error */
 
 #endif				/* !AUDIO_H */

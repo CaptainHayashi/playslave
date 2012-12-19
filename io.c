@@ -40,6 +40,7 @@ const char     *ERRORS[NUM_ERRORS] = {
 	"INTERNAL_ERROR",	/* E_INTERNAL_ERROR */
 	"NO_MEM",		/* E_NO_MEM */
 	/* Misc */
+	"EOF",			/* E_EOF */
 	"UNKNOWN",		/* E_UNKNOWN */
 };
 

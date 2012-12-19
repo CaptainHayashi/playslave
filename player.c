@@ -199,28 +199,18 @@ player_load(struct player *play, const char *filename)
 void
 player_update(struct player *play)
 {
-	play = (void *)play;
-/*	if (play->cstate == PLAYING) {
-		assert(play->au != NULL);
+    enum error err = E_OK;
+	if (play->cstate == PLAYING) {
+            enum error last_err;
 
-		int		err;
-
-		err = audio_play_frame(play->au);
-		if (err) {
-			switch (err) {
-			case E_PLAY_EOF:
-				break;
-			case E_PLAY_DECODE_ERR:
-				error(E_BAD_FILE, "decode error");
-				break;
-			default:
-				error(E_UNKNOWN, "unknown error");
-				break;
-			}
-			player_eject(play);
-
-		}
-	}*/
+            last_err = audio_error(play->au);
+            if (last_err) {
+                /* Means we've hit either EOF or a roadblock whilst
+                 * playing the current file, so eject it
+                 */
+                err = player_ejct(play);
+            }
+	}
 }
 
 enum error

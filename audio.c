@@ -22,7 +22,6 @@
 #define _POSIX_C_SOURCE 200809
 
 #include <time.h>
-#include <stdint.h>
 
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
@@ -35,7 +34,7 @@
 #define BUFFER_SIZE FF_MIN_BUFFER_SIZE
 
 struct audio {
-	enum audio_play_err last_err;
+	enum error	last_err;
 	/* libavformat state */
 	AVFormatContext *context;
 	AVStream       *stream;
@@ -43,7 +42,7 @@ struct audio {
 	AVFrame        *frame;
 	int		stream_id;
 	/* shared state */
-	uint8_t		buffer [BUFFER_SIZE];
+	unsigned char	buffer[BUFFER_SIZE];
 	int		frame_finished;
 	char           *frame_ptr;
 	unsigned long	num_samples;
@@ -57,6 +56,22 @@ static enum audio_init_err au_init_packet(AVPacket **packet, uint8_t *buffer);
 static enum audio_init_err au_init_sink(struct audio *au);
 static enum audio_init_err au_init_codec(struct audio *au, int stream, AVCodec *codec);
 static PaStreamCallbackResult au_handle_frame(struct audio *au);
+
+/*
+ * PortAudio callback prototypes
+ */
+
+static int
+au_cb_play(const void *in,
+	   void *out,
+	   unsigned long frames_per_buf,
+	   const PaStreamCallbackTimeInfo *timeInfo,
+	   PaStreamCallbackFlags statusFlags,
+	   void *v_au);
+
+/*
+ * Loading and unloading
+ */
 
 enum audio_init_err
 audio_load(struct audio **au,
@@ -91,97 +106,6 @@ audio_load(struct audio **au,
 	return result;
 }
 
-enum error
-audio_start(struct audio *au)
-{
-	PaError		err;
-	enum error	result = E_OK;
-
-	err = Pa_StartStream(au->out_strm);
-	if (err)
-		result = E_INTERNAL_ERROR;
-	else
-		debug(0, "audio started");
-
-	return result;
-}
-
-enum error
-audio_stop(struct audio *au)
-{
-	PaError		err;
-	enum error	result = E_OK;
-
-	err = Pa_AbortStream(au->out_strm);
-	if (err)
-		result = E_INTERNAL_ERROR;
-	else
-		debug(0, "audio stopped");
-
-	return result;
-}
-
-static int
-au_play_frame(const void *in,
-		 void *out,
-		 unsigned long frames_per_buf,
-		 const PaStreamCallbackTimeInfo *timeInfo,
-		 PaStreamCallbackFlags statusFlags,
-		 void *v_au)
-{
-	PaStreamCallbackResult result = paContinue;
-	struct audio   *au = (struct audio *)v_au;
-	char           *cout = (char *)out;
-	unsigned long	frames_written = 0;
-
-	in = (const void *)in;	/* Allow a safe ignore */
-	timeInfo = (const void *)timeInfo;	/* And here */
-	statusFlags = statusFlags | 0;	/* Also here */
-
-
-	while (result == paContinue && frames_written < frames_per_buf) {
-		if (au->num_samples == 0) {
-			/* We need to decode more samples */
-
-			au->frame_finished = 0;
-			while (result == paContinue && !au->frame_finished) {
-				if (av_read_frame(au->context, au->packet) < 0) {
-					au->last_err = E_PLAY_EOF;
-					result = paComplete;
-				}
-				if (result == paContinue &&
-				au->packet->stream_index == au->stream_id) {
-					result = au_handle_frame(au);
-				}
-			}
-
-		}
-		if (result == paContinue && au->frame_finished) {
-			size_t		bytes;
-			unsigned long	num_to_get;
-
-			/* How many samples do we have? */
-			if (au->num_samples > frames_per_buf - frames_written)
-				num_to_get = frames_per_buf - frames_written;
-			else
-				num_to_get = au->num_samples;
-
-			/* How many bytes does that translate into? */
-			bytes = (num_to_get
-				 * au->stream->codec->channels
-				 * av_get_bytes_per_sample(au->stream->codec->sample_fmt));
-			memcpy(cout,
-			       au->frame_ptr,
-			       bytes);
-			cout += bytes;
-			au->frame_ptr += bytes;
-			frames_written += num_to_get;
-			au->num_samples -= num_to_get;
-		}
-	}
-	return (int)result;
-}
-
 void
 audio_unload(struct audio *au)
 {
@@ -197,7 +121,53 @@ audio_unload(struct audio *au)
 	}
 }
 
-/* STATIC FUNCTIONS */
+/*
+ * Starting and stopping the stream
+ */
+
+enum error
+audio_start(struct audio *au)
+{
+	PaError		pa_err;
+	enum error	err = E_OK;
+
+	pa_err = Pa_StartStream(au->out_strm);
+	if (pa_err)
+		err = error(E_INTERNAL_ERROR, "couldn't start stream");
+	else
+		debug(0, "audio started");
+
+	return err;
+}
+
+enum error
+audio_stop(struct audio *au)
+{
+	PaError		pa_err;
+	enum error	err = E_OK;
+
+	pa_err = Pa_AbortStream(au->out_strm);
+	if (pa_err)
+		err = error(E_INTERNAL_ERROR, "couldn't stop stream");
+	else
+		debug(0, "audio stopped");
+
+	return err;
+}
+
+/*
+ * Inspecting the audio structure
+ */
+
+enum error
+audio_error(struct audio *au)
+{
+	return au->last_err;
+}
+
+/*
+ * Static functions
+ */
 
 static enum audio_init_err
 au_init_stream(struct audio *au)
@@ -320,7 +290,7 @@ au_init_sink(struct audio *au)
 				    (double)codec->sample_rate,
 				    frames_per_buf,
 				    paClipOff,
-				    au_play_frame,
+				    au_cb_play,
 				    (void *)au);
 		if (err)
 			result = E_AINIT_DEVICE_OPEN_FAIL;
@@ -337,8 +307,9 @@ au_handle_frame(struct audio *au)
 				  au->frame,
 				  &(au->frame_finished),
 				  au->packet) < 0) {
+		/* Decode error */
 		result = paAbort;
-		au->last_err = E_PLAY_DECODE_ERR;
+		au->last_err = E_BAD_FILE;
 	}
 	if (result == paContinue && au->frame_finished) {
 		/* Record data that we'll use in the play loop */
@@ -346,4 +317,73 @@ au_handle_frame(struct audio *au)
 		au->num_samples = au->frame->nb_samples;
 	}
 	return result;
+}
+
+/*
+ * Callbacks
+ */
+
+static int
+au_cb_play(const void *in,
+	   void *out,
+	   unsigned long frames_per_buf,
+	   const PaStreamCallbackTimeInfo *timeInfo,
+	   PaStreamCallbackFlags statusFlags,
+	   void *v_au)
+{
+	/*
+	 * TODO: This callback is morbidly obese, and a lot of its
+	 * functionality would be better off running in the main thread,
+	 * possibly.
+	 */
+	PaStreamCallbackResult result = paContinue;
+	struct audio   *au = (struct audio *)v_au;
+	char           *cout = (char *)out;
+	unsigned long	frames_written = 0;
+
+	in = (const void *)in;	/* Allow a safe ignore */
+	timeInfo = (const void *)timeInfo;	/* And here */
+	statusFlags = statusFlags | 0;	/* Also here */
+
+	while (result == paContinue && frames_written < frames_per_buf) {
+		if (au->num_samples == 0) {
+			/* We need to decode more samples */
+
+			au->frame_finished = 0;
+			while (result == paContinue && !au->frame_finished) {
+				if (av_read_frame(au->context, au->packet) < 0) {
+					au->last_err = E_EOF;
+					result = paComplete;
+				}
+				if (result == paContinue &&
+				au->packet->stream_index == au->stream_id) {
+					result = au_handle_frame(au);
+				}
+			}
+
+		}
+		if (result == paContinue && au->frame_finished) {
+			size_t		bytes;
+			unsigned long	num_to_get;
+
+			/* How many samples do we have? */
+			if (au->num_samples > frames_per_buf - frames_written)
+				num_to_get = frames_per_buf - frames_written;
+			else
+				num_to_get = au->num_samples;
+
+			/* How many bytes does that translate into? */
+			bytes = (num_to_get
+				 * au->stream->codec->channels
+				 * av_get_bytes_per_sample(au->stream->codec->sample_fmt));
+			memcpy(cout,
+			       au->frame_ptr,
+			       bytes);
+			cout += bytes;
+			au->frame_ptr += bytes;
+			frames_written += num_to_get;
+			au->num_samples -= num_to_get;
+		}
+	}
+	return (int)result;
 }

@@ -32,10 +32,11 @@ enum error {
 	E_BAD_FILE,		/* Tried to read corrupt file */
 	E_BAD_CONFIG,		/* Program improperly configured */
 	/* System errors */
-	E_AUDIO_INIT_FAIL,      /* Couldn't open audio backend */
+	E_AUDIO_INIT_FAIL,	/* Couldn't open audio backend */
 	E_INTERNAL_ERROR,	/* General system error, usually fatal */
 	E_NO_MEM,		/* Allocation of memory failed */
 	/* Misc */
+	E_EOF,			/* Reached end of file while reading */
 	E_UNKNOWN,		/* Unknown error */
 	NUM_ERRORS,		/* Number of items in enum */
 };
