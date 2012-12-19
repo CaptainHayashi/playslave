@@ -54,10 +54,4 @@ enum audio_init_err {
 	E_AINIT_BAD_RATE,
 };
 
-enum audio_play_err {
-	E_PLAY_OK = 0,
-	E_PLAY_EOF,
-	E_PLAY_DECODE_ERR,
-};
-
 #endif				/* !ERRORS_H */
