@@ -5,6 +5,9 @@
 
 /* The audio structure contains all state pertaining to the currently
  * playing audio file.
+ *
+ * struct audio is an opaque structure; only audio.c knows its true
+ * definition.
  */
 struct audio;
 

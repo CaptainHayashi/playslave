@@ -8,8 +8,8 @@
 #include "io.h"
 #include "player.h"
 
-typedef enum error (*nullary_cmd_ptr) (struct player_context *);
-typedef enum error (*unary_cmd_ptr) (struct player_context *, const char *);
+typedef enum error (*nullary_cmd_ptr) (struct player *);
+typedef enum error (*unary_cmd_ptr) (struct player *, const char *);
 
 const int	WORD_LEN = 4;
 
@@ -52,20 +52,20 @@ unary_cmd_ptr	UNARY_FUNCS[NUM_UNARY_CMDS] = {
 	NULL			/* TODO: CMD_SEEK */
 };
 
-static void	handle_command(struct player_context *play);
+static void	handle_command(struct player *play);
 
 static bool
-try_nullary(struct player_context *play,
+try_nullary(struct player *play,
 	    const char *buf, const char *arg, enum error *result);
 
 static bool
-try_unary(struct player_context *play,
+try_unary(struct player *play,
 	  const char *buf, const char *arg, enum error *result);
 
 /****************************************************************************/
 
 void
-check_commands(struct player_context *play)
+check_commands(struct player *play)
 {
 	if (input_waiting()) {
 		handle_command(play);
@@ -75,7 +75,7 @@ check_commands(struct player_context *play)
 /****************************************************************************/
 
 static void
-handle_command(struct player_context *play)
+handle_command(struct player *play)
 {
 	char           *buffer = NULL;
 	char           *argument = NULL;
@@ -124,7 +124,7 @@ handle_command(struct player_context *play)
 }
 
 static bool
-try_nullary(struct player_context *play,
+try_nullary(struct player *play,
 	    const char *buf,
 	    const char *arg, enum error *result)
 {
@@ -146,7 +146,7 @@ try_nullary(struct player_context *play,
 }
 
 static bool
-try_unary(struct player_context *play,
+try_unary(struct player *play,
 	  const char *buf,
 	  const char *arg,
 	  enum error *result)

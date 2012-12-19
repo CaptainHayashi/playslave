@@ -1,16 +1,17 @@
 #define _POSIX_C_SOURCE 200809
 
-#include <libavformat/avformat.h>
-#include <portaudio.h>
 #include <stdio.h>
 #include <string.h>
 
-#include "io.h"
+#include <libavformat/avformat.h>
+#include <portaudio.h>
+
 #include "cmd.h"
+#include "io.h"
 #include "player.h"
 
 static void
-main_loop(struct player_context *play)
+main_loop(struct player *play)
 {
 	enum player_state state;
 	for (state = player_state(play);
@@ -26,7 +27,7 @@ main(int argc, char *argv[])
 {
 	int		driver_id;
 	int		num_devices;
-	struct player_context *context;
+	struct player *context;
 
 	if (Pa_Initialize() != paNoError) {
 		error(3, "couldn't init portaudio");

@@ -8,20 +8,20 @@
 #include "io.h"
 #include "player.h"
 
-struct player_context {
+struct player {
 	enum player_state state;
 	int		device_id;
 	struct audio   *au;
 };
 
 int
-player_init(struct player_context **play,
+player_init(struct player **play,
 	    int device_id)
 {
 	int		failure = 0;
 
 	if (*play == NULL) {
-		*play = calloc((size_t) 1, sizeof(struct player_context));
+		*play = calloc((size_t) 1, sizeof(struct player));
 		if (*play == NULL) {
 			failure = -1;
 		}
@@ -33,7 +33,7 @@ player_init(struct player_context **play,
 }
 
 void
-player_free(struct player_context *play)
+player_free(struct player *play)
 {
     if (play->au)
         audio_unload(play->au);
@@ -41,7 +41,7 @@ player_free(struct player_context *play)
 }
 
 enum error
-player_eject(struct player_context *play)
+player_eject(struct player *play)
 {
 	enum error	result;
 
@@ -71,7 +71,7 @@ player_eject(struct player_context *play)
 }
 
 enum error
-player_play(struct player_context *play)
+player_play(struct player *play)
 {
 	enum error	result;
 
@@ -102,7 +102,7 @@ player_play(struct player_context *play)
 }
 
 enum error
-player_stop(struct player_context *play)
+player_stop(struct player *play)
 {
 	enum error	result;
 
@@ -128,7 +128,7 @@ player_stop(struct player_context *play)
 }
 
 enum error
-player_load(struct player_context *play, const char *filename)
+player_load(struct player *play, const char *filename)
 {
 	enum error	result;
 	enum audio_init_err err;
@@ -174,7 +174,7 @@ player_load(struct player_context *play, const char *filename)
 }
 
 void
-player_update(struct player_context *play)
+player_update(struct player *play)
 {
 	play = (void *)play;
 /*	if (play->state == PLAYING) {
@@ -201,7 +201,7 @@ player_update(struct player_context *play)
 }
 
 enum error
-player_shutdown(struct player_context *play)
+player_shutdown(struct player *play)
 {
 	enum error	result;
 
@@ -212,7 +212,7 @@ player_shutdown(struct player_context *play)
 }
 
 enum player_state
-player_state(struct player_context *play)
+player_state(struct player *play)
 {
 	return play->state;
 }
