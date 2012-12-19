@@ -5,7 +5,7 @@ playslave
 
 It might end up being the bottom rung of a playback system someday.  Who knows.
 
-It is written in C99 against (hopefully) the POSIX libraries, and should compile on any recent nix-like.
+It is written in C99 against POSIX.1-2008, and should compile on any recent nix-like.
 
 Usage
 -----
