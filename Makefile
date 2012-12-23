@@ -2,7 +2,7 @@ CC := clang
 CFLAGS := -g -Wall -Wextra -Werror --std=c99 `pkg-config --cflags libavformat1 libavcodec1 portaudio-2.0`
 LIBS := `pkg-config --libs libavformat1 libavcodec1 portaudio-2.0`
 
-OBJS := main.o player.o io.o cmd.o audio.o
+OBJS := main.o player.o io.o cmd.o audio.o audio_av.o
 
 main: $(OBJS) 
 	$(CC) -o main $(OBJS) $(LIBS)
@@ -21,3 +21,6 @@ cmd.o: cmd.c
 
 audio.o: audio.c
 	$(CC) -c -o audio.o audio.c $(CFLAGS)
+
+audio_av.o: audio_av.c
+	$(CC) -c -o audio_av.o audio_av.c $(CFLAGS)

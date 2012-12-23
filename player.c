@@ -153,47 +153,19 @@ player_stop(struct player *play)
 enum error
 player_load(struct player *play, const char *filename)
 {
-	enum error	result;
-	enum audio_init_err err;
+	enum error err;
 
 	err = audio_load(&(play->au),
 			 filename,
 			 play->device);
-	if (err) {
-		switch (err) {
-		case E_AINIT_OPEN_INPUT:
-			result = error(E_NO_FILE, filename);
-			break;
-		case E_AINIT_FIND_STREAM_INFO:
-			result = error(E_BAD_FILE, "can't find stream info");
-			break;
-		case E_AINIT_DEVICE_OPEN_FAIL:
-			result = error(E_BAD_FILE, "can't open device");
-			break;
-		case E_AINIT_NO_STREAM:
-			result = error(E_BAD_FILE, "can't find stream");
-			break;
-		case E_AINIT_CANNOT_ALLOC_AUDIO:
-			result = error(E_NO_MEM, "can't alloc audio structure");
-			break;
-		case E_AINIT_CANNOT_ALLOC_PACKET:
-			result = error(E_NO_MEM, "can't alloc packet");
-			break;
-		case E_AINIT_CANNOT_ALLOC_FRAME:
-			result = error(E_NO_MEM, "can't alloc frame");
-			break;
-		default:
-			result = error(E_UNKNOWN, "unknown error");
-			break;
-		}
+	if (err)
 		player_ejct(play);
-	} else {
+	else {
 		debug(0, "loaded %s", filename);
 		play->cstate = STOPPED;
-		result = E_OK;
 	}
 
-	return result;
+	return err;
 }
 
 void

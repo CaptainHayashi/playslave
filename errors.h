@@ -1,5 +1,22 @@
+/*
+ * =============================================================================
+ *
+ *       Filename:  errors.h
+ *
+ *    Description:  Error constants
+ *
+ *        Version:  1.0
+ *        Created:  23/12/2012 18:50:22
+ *       Revision:  none
+ *       Compiler:  clang
+ *
+ *         Author:  Matt Windsor (CaptainHayashi), matt.windsor@ury.org.uk
+ *        Company:  University Radio York Computing Team
+ *
+ * =============================================================================
+ */
+
 /*-
- * errors.h - error constants
  * Copyright (C) 2012  University Radio York Computing Team
  *
  * This file is a part of playslave.
@@ -22,6 +39,9 @@
 #ifndef ERRORS_H
 #define ERRORS_H
 
+
+/**  DATA TYPES  **************************************************************/
+
 /* Categories of error. */
 enum error {
 	E_OK = 0,		/* No error */
@@ -37,21 +57,9 @@ enum error {
 	E_NO_MEM,		/* Allocation of memory failed */
 	/* Misc */
 	E_EOF,			/* Reached end of file while reading */
+	E_INCOMPLETE,		/* Incomplete computation, try again */
 	E_UNKNOWN,		/* Unknown error */
 	NUM_ERRORS,		/* Number of items in enum */
 };
 
-enum audio_init_err {
-	E_AINIT_OK = 0,
-	E_AINIT_OPEN_INPUT,
-	E_AINIT_FIND_STREAM_INFO,
-	E_AINIT_DEVICE_OPEN_FAIL,
-	E_AINIT_NO_STREAM,
-	E_AINIT_NO_CODEC,
-	E_AINIT_CANNOT_ALLOC_AUDIO,
-	E_AINIT_CANNOT_ALLOC_PACKET,
-	E_AINIT_CANNOT_ALLOC_FRAME,
-	E_AINIT_BAD_RATE,
-};
-
-#endif				/* !ERRORS_H */
+#endif				/* not ERRORS_H */

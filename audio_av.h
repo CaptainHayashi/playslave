@@ -1,0 +1,82 @@
+/*
+ * =============================================================================
+ *
+ *       Filename:  audio_av.h
+ *
+ *    Description:  Interface to ffmpeg-specific code
+ *
+ *        Version:  1.0
+ *        Created:  23/12/2012 01:19:42
+ *       Revision:  none
+ *       Compiler:  clang
+ *
+ *         Author:  Matt Windsor (CaptainHayashi), matt.windsor@ury.york.ac.uk
+ *        Company:  University Radio York Computing Team
+ *
+ * =============================================================================
+ */
+
+/*-
+ * Copyright (C) 2012  University Radio York Computing Team
+ *
+ * This file is a part of playslave.
+ *
+ * playslave is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software
+ * Foundation; either version 2 of the License, or (at your option) any later
+ * version.
+ *
+ * playslave is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * playslave; if not, write to the Free Software Foundation, Inc., 51 Franklin
+ * Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ */
+
+#ifndef AUDIO_AV_H
+#define AUDIO_AV_H
+
+/**  INCLUDES  ****************************************************************/
+
+#include <libavformat/avformat.h>
+
+/**  DATA TYPES  **************************************************************/
+
+/* The audio input structure (thusly named in case we ever generalise
+ * away from ffmpeg), containing all state pertaining to the input
+ * decoder for a file.
+ *
+ * struct au_in is an opaque structure; only audio_av.c knows its true
+ * definition.
+ */
+struct au_in;
+
+/**  FUNCTIONS ****************************************************************/
+
+/* Attempts to set ffmpeg up for reading the file in 'path', placing
+ * the resulting au_in structure pointer in the location pointed to by
+ * 'av'.
+ */
+enum error	audio_av_load(struct au_in **av, const char *path);
+void		audio_av_unload(struct au_in *av);
+
+/* Populates the given PortAudio parameter variables with information
+ * from the ffmpeg audio context.
+ *
+ * The parameter variables MUST already have been allocated.
+ */
+enum error
+audio_av_pa_config(struct au_in *av,	/* ffmpeg audio structure */
+		   int device,	/* PortAudio device */
+		   PaStreamParameters *params,
+		   unsigned long *samples_per_buf);
+
+enum error      audio_av_decode(struct au_in *av, char **buf, unsigned long *n);
+double		audio_av_sample_rate(struct au_in *av);
+size_t		audio_av_bytes2samples(struct au_in *av, unsigned long bytes);
+unsigned long	audio_av_samples2bytes(struct au_in *av, size_t samples);
+
+
+#endif				/* !AUDIO_AV_H */

@@ -35,10 +35,10 @@ struct audio;
 /* Loads a file and constructs an audio structure to hold the playback
  * state.
  */
-enum audio_init_err
+enum error
 audio_load(struct audio **au,	/* Location for the audio struct pointer */
 	   const char *path,	/* File to load into the audio struct */
-	   int device_id);	/* ID of the device to play out on */
+	   int device);		/* ID of the device to play out on */
 
 void		audio_unload(struct audio *au);	/* Frees an audio struct */
 enum error	audio_start(struct audio *au);	/* Starts playback */
