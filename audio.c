@@ -109,12 +109,14 @@ audio_load(struct audio **au,
 	*au = calloc((size_t)1, sizeof(struct audio));
 	if (*au == NULL)
 		err = error(E_NO_MEM, "can't alloc audio structure");
-	if (err == E_OK)
+	if (err == E_OK) {
+		(*au)->last_err = E_INCOMPLETE;
 		err = audio_av_load(&((*au)->av), path);
-	if (err == E_OK)
-		err = init_ring_buf(*au, audio_av_samples2bytes((*au)->av, 1));
+	}
 	if (err == E_OK)
 		err = init_sink(*au, device);
+	if (err == E_OK)
+		err = init_ring_buf(*au, audio_av_samples2bytes((*au)->av, 1));
 
 	return err;
 }
@@ -181,16 +183,55 @@ audio_error(struct audio *au)
 }
 
 enum error
+audio_halted(struct audio *au)
+{
+	enum error	err = E_OK;
+
+	if (!Pa_IsStreamActive(au->out_strm)) {
+		err = au->last_err;
+		/* Abnormal stream halts with error being OK are weird... */
+		if (err == E_OK)
+			err = E_UNKNOWN;
+	}
+	return err;
+}
+
+/*----------------------------------------------------------------------------
+ *  Decoding
+ *----------------------------------------------------------------------------*/
+
+enum error
 audio_decode(struct audio *au)
 {
-	char           *buf;
-	size_t		n;
-	enum error	err;
+	unsigned long	cap;
+	unsigned long	count;
+	enum error	err = E_OK;
 
-	err = audio_av_decode(au->av, &buf, &n);
-	if (err == E_OK) {
+	cap = (unsigned long)PaUtil_GetRingBufferWriteAvailable(au->ring_buf);
+	count = (cap < au->frame_samples ? cap : au->frame_samples);
+	if (count > 0) {
+		/*
+		 * We can copy some already decoded samples into the ring
+		 * buffer
+		 */
+		unsigned long	num_written;
 
+		num_written = PaUtil_WriteRingBuffer(au->ring_buf,
+						     au->frame_ptr,
+						 (ring_buffer_size_t)count);
+		if (num_written != count)
+			err = error(E_INTERNAL_ERROR, "ringbuf write error");
+
+		au->frame_samples -= num_written;
+		au->frame_ptr += audio_av_samples2bytes(au->av, num_written);
 	}
+	if (au->frame_samples == 0) {
+		/* We need to decode some new frames! */
+		err = audio_av_decode(au->av,
+				      &(au->frame_ptr),
+				      &(au->frame_samples));
+	}
+	au->last_err = err;
 	return err;
 }
 
@@ -294,6 +335,8 @@ au_cb_play(const void *in,
 	 * functionality would be better off running in the main thread,
 	 * possibly.
 	 */
+	unsigned long	avail;
+	unsigned long	samples;
 	PaStreamCallbackResult result = paContinue;
 	struct audio   *au = (struct audio *)v_au;
 	char           *cout = (char *)out;
@@ -305,43 +348,49 @@ au_cb_play(const void *in,
 	statusFlags = statusFlags | 0;
 
 	while (result == paContinue && frames_written < frames_per_buf) {
-		if (au->frame_samples == 0) {
-			enum error	err;
+		avail = PaUtil_GetRingBufferReadAvailable(au->ring_buf);
+		if (avail == 0) {
+			/*
+			 * We've run out of sound, ruh-roh. Let's see if
+			 * something went awry during the last decode
+			 * cycle...
+			 */
 
-			au->last_err = err = audio_av_decode(au->av,
-							   &(au->frame_ptr),
-						      &(au->frame_samples));
-			switch (err) {
-			case E_OK:
-				break;
+			switch (au->last_err) {
 			case E_EOF:
+				/*
+				 * We've just hit the end of the file.
+				 * Nothing to worry about!
+				 */
 				result = paComplete;
 				break;
+			case E_INCOMPLETE:
+				/* Looks like we're just waiting for
+				 * the decoding to go through.
+				 * In other words, this is a buffer
+				 * underflow.
+				 */
+				debug(0, "buffer underflow");
+				/* Break out of the loop inelegantly */
+				frames_written = frames_per_buf;
+				break;
 			default:
+				/* Something genuinely went tits-up. */
 				result = paAbort;
 				break;
 			}
-		}
-		if (result == paContinue) {
-			size_t		bytes;
-			unsigned long	samples;
-
+		} else {
 			/* How many samples do we have? */
-			if (au->frame_samples > frames_per_buf - frames_written)
+			if (avail > frames_per_buf - frames_written)
 				samples = frames_per_buf - frames_written;
 			else
-				samples = au->frame_samples;
+				samples = avail;
 
-			/* How many bytes does that translate into? */
-			bytes = audio_av_samples2bytes(au->av, samples);
-			memcpy(cout,
-			       au->frame_ptr,
-			       bytes);
-
-			cout += bytes;
-			au->frame_ptr += bytes;
-			au->frame_samples -= samples;
+			cout += PaUtil_ReadRingBuffer(au->ring_buf,
+						      cout,
+						      samples);
 			frames_written += samples;
+			break;
 		}
 	}
 	return (int)result;

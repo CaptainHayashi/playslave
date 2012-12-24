@@ -44,5 +44,7 @@ void		audio_unload(struct audio *au);	/* Frees an audio struct */
 enum error	audio_start(struct audio *au);	/* Starts playback */
 enum error	audio_stop(struct audio *au);	/* Stops playback */
 enum error	audio_error(struct audio *au);	/* Gets last playback error */
+enum error	audio_decode(struct audio *au);	/* Does some decoding work */
+enum error	audio_halted(struct audio *au); /* Has stream halted itself? */
 
 #endif				/* !AUDIO_H */

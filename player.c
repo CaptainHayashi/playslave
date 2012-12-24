@@ -24,6 +24,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "audio.h"
 #include "io.h"
@@ -153,7 +154,7 @@ player_stop(struct player *play)
 enum error
 player_load(struct player *play, const char *filename)
 {
-	enum error err;
+	enum error	err;
 
 	err = audio_load(&(play->au),
 			 filename,
@@ -171,18 +172,21 @@ player_load(struct player *play, const char *filename)
 void
 player_update(struct player *play)
 {
-    enum error err = E_OK;
-	if (play->cstate == PLAYING) {
-            enum error last_err;
+	enum error	err = E_OK;
+	struct timespec t;
 
-            last_err = audio_error(play->au);
-            if (last_err) {
-                /* Means we've hit either EOF or a roadblock whilst
-                 * playing the current file, so eject it
-                 */
-                err = player_ejct(play);
-            }
+	if (play->cstate == PLAYING) {
+		if (audio_halted(play->au)) {
+			err = player_ejct(play);
+		} else {
+			err = audio_decode(play->au);
+		}
 	}
+
+	t.tv_sec = 0;
+	t.tv_nsec = 1000;
+	nanosleep(&t, NULL);
+	/* TODO: do something with err? */
 }
 
 enum error
