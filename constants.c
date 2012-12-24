@@ -11,7 +11,7 @@
  *       Compiler:  clang
  *
  *         Author:  Matt Windsor (CaptainHayashi), matt.windsor@ury.org.uk
- *        Company:  University Radio York
+ *        Company:  University Radio York Computing Team
  *
  * =============================================================================
  */
