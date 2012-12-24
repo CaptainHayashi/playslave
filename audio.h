@@ -22,7 +22,13 @@
 #ifndef AUDIO_H
 #define AUDIO_H
 
-#include "errors.h"
+/**  INCLUDES  ****************************************************************/
+
+#include <stdint.h> /* uint64_t */
+
+#include "errors.h" /* enum error */
+
+/**  DATA TYPES  **************************************************************/
 
 /* The audio structure contains all state pertaining to the currently
  * playing audio file.
@@ -31,6 +37,8 @@
  * definition.
  */
 struct audio;
+
+/**  FUNCTIONS  ***************************************************************/
 
 /* Loads a file and constructs an audio structure to hold the playback
  * state.
@@ -46,5 +54,6 @@ enum error	audio_stop(struct audio *au);	/* Stops playback */
 enum error	audio_error(struct audio *au);	/* Gets last playback error */
 enum error	audio_decode(struct audio *au);	/* Does some decoding work */
 enum error	audio_halted(struct audio *au); /* Has stream halted itself? */
+uint64_t	audio_msec(struct audio *au);	/* Current time in song */
 
 #endif				/* !AUDIO_H */

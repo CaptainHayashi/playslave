@@ -64,6 +64,7 @@ struct audio {
 	char           *ring_data;
 	PaStream       *out_strm;	/* Output stream */
 	int		device_id;	/* PortAudio device ID */
+	uint64_t	used_samples;	/* Counter of samples played */
 };
 
 /**  STATIC PROTOTYPES  *******************************************************/
@@ -189,6 +190,17 @@ audio_halted(struct audio *au)
 			err = E_UNKNOWN;
 	}
 	return err;
+}
+
+/* Gets the current played position in the song, in microseconds.
+ *
+ * As this may be executing whilst the playing callback is executing,
+ * do not expect it to be highly accurate.
+ */
+uint64_t
+audio_msec(struct audio *au)
+{
+	return (au->used_samples * MSECS_IN_SEC) / audio_av_sample_rate(au->av);
 }
 
 /*----------------------------------------------------------------------------
@@ -325,13 +337,7 @@ au_cb_play(const void *in,
 	   PaStreamCallbackFlags statusFlags,
 	   void *v_au)
 {
-	/*
-	 * TODO: This callback is morbidly obese, and a lot of its
-	 * functionality would be better off running in the main thread,
-	 * possibly.
-	 */
 	unsigned long	avail;
-	unsigned long	samples;
 	PaStreamCallbackResult result = paContinue;
 	struct audio   *au = (struct audio *)v_au;
 	char           *cout = (char *)out;
@@ -375,6 +381,7 @@ au_cb_play(const void *in,
 				break;
 			}
 		} else {
+			unsigned long	samples;
 			/* How many samples do we have? */
 			if (avail > frames_per_buf - frames_written)
 				samples = frames_per_buf - frames_written;
@@ -389,6 +396,7 @@ au_cb_play(const void *in,
 						      cout,
 					       (ring_buffer_size_t)samples);
 			frames_written += samples;
+			au->used_samples += samples;
 			break;
 		}
 	}

@@ -44,4 +44,7 @@
 const size_t	BUFFER_SIZE;	/* Number of bytes in decoding buffer */
 const size_t	RINGBUF_SIZE;	/* Number of samples in ring buffer */
 
+const uint64_t	MSECS_IN_SEC;	/* Number of microseconds in a second */
+const uint64_t	TIME_MSECS;	/* Number of microseconds between TIME pulses */
+
 #endif				/* not CONSTANTS_H */

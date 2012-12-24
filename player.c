@@ -1,5 +1,21 @@
+/*
+ * =============================================================================
+ *
+ *       Filename:  player.c
+ *
+ *    Description:  High-level player structure and commands
+ *
+ *        Version:  1.0
+ *        Created:  24/12/2012 20:08:15
+ *       Revision:  none
+ *       Compiler:  clang
+ *
+ *         Author:  Matt Windsor (CaptainHayashi), matt.windsor@ury.org.uk
+ *        Company:  University Radio York Computing Team
+ *
+ * =============================================================================
+ */
 /*-
- * player.c - high-level player structure
  * Copyright (C) 2012  University Radio York Computing Team
  *
  * This file is a part of playslave.
@@ -19,6 +35,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301, USA.
  */
+
+/**  INCLUDES  ****************************************************************/
+
 #define _POSIX_C_SOURCE 200809
 
 #include <stdint.h>
@@ -26,15 +45,22 @@
 #include <string.h>
 
 #include "audio.h"
+#include "constants.h"
 #include "io.h"
 #include "player.h"
+
+/**  DATA TYPES  **************************************************************/
 
 struct player {
 	struct audio   *au;	/* Audio backend structure */
 
 	enum state	cstate;	/* Current state of player FSM */
 	int		device;	/* Device ID given at program start */
+
+	uint64_t	ptime;	/* Last observed time in song */
 };
+
+/**  PUBLIC FUNCTIONS  ********************************************************/
 
 enum error
 player_init(struct player **play, int device)
@@ -75,6 +101,8 @@ player_ejct(struct player *play)
 			play->au = NULL;
 		}
 		play->cstate = EJECTED;
+		play->ptime = 0;
+
 		result = E_OK;
 		debug(0, "player ejected");
 		break;
@@ -168,15 +196,21 @@ player_load(struct player *play, const char *filename)
 }
 
 enum error
-player_update(struct player *play)
+player_update(struct player *pl)
 {
 	enum error	err = E_OK;
 
-	if (play->cstate == PLAYING) {
-		if (audio_halted(play->au)) {
-			err = player_ejct(play);
+	if (pl->cstate == PLAYING) {
+		if (audio_halted(pl->au)) {
+			err = player_ejct(pl);
 		} else {
-			err = audio_decode(play->au);
+			uint64_t time = audio_msec(pl->au);
+			if (time / TIME_MSECS > pl->ptime / TIME_MSECS) {
+				debug(0, "TIME %u", time);
+			}
+			pl->ptime = time;
+
+			err = audio_decode(pl->au);
 		}
 	}
 
