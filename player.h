@@ -70,7 +70,7 @@ player_load(struct player *pl,
 /*
  * Miscellaneous
  */
-void		player_update(struct player *pl);
+enum error	player_update(struct player *pl);
 enum state	player_state(struct player *pl);	/* Current player state. */
 
 #endif				/* !PLAYER_H */

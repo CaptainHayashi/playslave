@@ -39,22 +39,17 @@
 
 /**  INCLUDES  ****************************************************************/
 
-#include <time.h>
-
-#include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
 #include <portaudio.h>
 
 #include "contrib/pa_ringbuffer.h"
 
-#include "io.h"
-#include "player.h"
 #include "audio.h"
 #include "audio_av.h"
-
-/**  MACROS  ******************************************************************/
-
-#define RINGBUF_SIZE 32768	/* Number of samples in ring buffer */
+#include "constants.h"
+#include "io.h"
+#include "player.h"
 
 /**  DATA TYPES  **************************************************************/
 
@@ -116,7 +111,7 @@ audio_load(struct audio **au,
 	if (err == E_OK)
 		err = init_sink(*au, device);
 	if (err == E_OK)
-		err = init_ring_buf(*au, audio_av_samples2bytes((*au)->av, 1));
+		err = init_ring_buf(*au, audio_av_samples2bytes((*au)->av, 1L));
 
 	return err;
 }
@@ -365,10 +360,10 @@ au_cb_play(const void *in,
 				result = paComplete;
 				break;
 			case E_INCOMPLETE:
-				/* Looks like we're just waiting for
-				 * the decoding to go through.
-				 * In other words, this is a buffer
-				 * underflow.
+				/*
+				 * Looks like we're just waiting for the
+				 * decoding to go through. In other words,
+				 * this is a buffer underflow.
 				 */
 				debug(0, "buffer underflow");
 				/* Break out of the loop inelegantly */
@@ -386,9 +381,13 @@ au_cb_play(const void *in,
 			else
 				samples = avail;
 
+			/*
+			 * TODO: handle the ulong->long cast more gracefully,
+			 * perhaps.
+			 */
 			cout += PaUtil_ReadRingBuffer(au->ring_buf,
 						      cout,
-						      samples);
+					       (ring_buffer_size_t)samples);
 			frames_written += samples;
 			break;
 		}

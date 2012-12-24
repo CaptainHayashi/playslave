@@ -23,6 +23,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #include <libavformat/avformat.h>
 #include <portaudio.h>
@@ -35,14 +36,18 @@ static enum error get_driver_id(int *driver, int argc, char *argv[]);
 static void	main_loop(struct player *play);
 
 static void
-main_loop(struct player *play)
+main_loop(struct player *pl)
 {
 	enum state	st;
-	for (st = player_state(play);
-	     st != QUITTING;
-	     st = player_state(play)) {
-		check_commands(play);
-		player_update(play);
+	struct timespec t;
+
+	t.tv_sec = 0;
+	t.tv_nsec = 1000;
+
+	for (st = player_state(pl); st != QUITTING; st = player_state(pl)) {
+		check_commands(pl);
+		player_update(pl);
+		nanosleep(&t, NULL);
 	}
 }
 
@@ -55,7 +60,7 @@ main(int argc, char *argv[])
 	enum error	err;
 	struct player  *context = NULL;
 
-	if (Pa_Initialize() != paNoError)
+	if (Pa_Initialize() != (int)paNoError)
 		err = error(E_AUDIO_INIT_FAIL, "couldn't init portaudio");
 	if (err == E_OK)
 		err = get_driver_id(&driver, argc, argv);
@@ -87,7 +92,7 @@ get_driver_id(int *driver, int argc, char *argv[])
 		int		i;
 		const PaDeviceInfo *dev;
 
-		err = error(3, "specify as argument to command");
+		err = error(E_BAD_CONFIG, "need device number, why not try:");
 
 		/* Print out the available devices */
 		for (i = 0; i < num_devices; i++) {

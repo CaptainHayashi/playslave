@@ -13,7 +13,7 @@ PKGS=		libavformat1 libavcodec1 portaudio-2.0
 CFLAGS+=	-g --std=c99 `pkg-config --cflags $(PKGS)`
 LIBS=		`pkg-config --libs $(PKGS)`
 
-OBJS=		main.o player.o io.o cmd.o audio.o audio_av.o
+OBJS=		main.o player.o io.o cmd.o audio.o audio_av.o constants.o
 OBJS+=		contrib/pa_ringbuffer.o
 
 $(PROG): $(OBJS) 

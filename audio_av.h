@@ -80,7 +80,7 @@ enum error
 audio_av_pa_config(struct au_in *av,	/* ffmpeg audio structure */
 		   int device,	/* PortAudio device */
 		   PaStreamParameters *params,
-		   unsigned long *samples_per_buf);
+		   size_t *samples_per_buf);
 
 enum error	audio_av_decode(struct au_in *av, char **buf, size_t *n);
 double		audio_av_sample_rate(struct au_in *av);

@@ -24,7 +24,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
 #include "audio.h"
 #include "io.h"
@@ -38,8 +37,7 @@ struct player {
 };
 
 enum error
-player_init(struct player **play,
-	    int device)
+player_init(struct player **play, int device)
 {
 	enum error	err = E_OK;
 
@@ -49,9 +47,9 @@ player_init(struct player **play,
 			err = E_NO_MEM;
 		}
 	}
-	if (!err) {
+	if (err == E_OK)
 		(*play)->device = device;
-	}
+
 	return err;
 }
 
@@ -169,11 +167,10 @@ player_load(struct player *play, const char *filename)
 	return err;
 }
 
-void
+enum error
 player_update(struct player *play)
 {
 	enum error	err = E_OK;
-	struct timespec t;
 
 	if (play->cstate == PLAYING) {
 		if (audio_halted(play->au)) {
@@ -183,10 +180,8 @@ player_update(struct player *play)
 		}
 	}
 
-	t.tv_sec = 0;
-	t.tv_nsec = 1000;
-	nanosleep(&t, NULL);
-	/* TODO: do something with err? */
+
+	return err;
 }
 
 enum error

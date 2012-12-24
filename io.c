@@ -48,6 +48,7 @@ void
 debug(int level, const char *format,...)
 {
 	va_list		ap;
+	/* LINTED lint doesn't seem to like va_start */
 	va_start(ap, format);
 
 	level = (int)level;
@@ -63,6 +64,7 @@ enum error
 error(enum error code, const char *format,...)
 {
 	va_list		ap;
+	/* LINTED lint doesn't seem to like va_start */
 	va_start(ap, format);
 
 	fprintf(stderr, "OOPS %s ", ERRORS[code]);

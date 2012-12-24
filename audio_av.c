@@ -49,11 +49,8 @@
 
 #include "audio_av.h"
 #include "errors.h"
+#include "constants.h"
 #include "io.h"
-
-/**  MACROS  ******************************************************************/
-
-#define BUFFER_SIZE FF_MIN_BUFFER_SIZE
 
 /**  DATA TYPES  **************************************************************/
 
@@ -62,7 +59,7 @@ struct au_in {
 	AVStream       *stream;
 	AVPacket       *packet;	/* Last undecoded packet */
 	AVFrame        *frame;	/* Last decoded frame */
-	unsigned char	buffer[BUFFER_SIZE];	/* Repo for decoded data */
+	unsigned char  *buffer;
 	int		stream_id;
 };
 
@@ -97,6 +94,11 @@ audio_av_load(struct au_in **av, const char *path)
 	*av = calloc((size_t)1, sizeof(struct au_in));
 	if (av == NULL)
 		err = error(E_NO_MEM, "couldn't alloc au_in structure");
+	if (err == E_OK) {
+		(*av)->buffer = calloc(BUFFER_SIZE, sizeof(char));
+		if ((*av)->buffer == NULL)
+			err = error(E_NO_MEM, "couldn't alloc decode buffer");
+	}
 	if (err == E_OK)
 		err = au_load_file(*av, path);
 	if (err == E_OK)
@@ -128,7 +130,11 @@ audio_av_unload(struct au_in *av)
 			av->context = NULL;
 			debug(0, "closed input file");
 		}
-		/* Buffer is a statically allocated array, can't free */
+		if (av->buffer != NULL) {
+			free(av->buffer);
+			av->buffer = NULL;
+			debug(0, "closed decode buffer");
+		}
 	}
 }
 
@@ -140,7 +146,7 @@ enum error
 audio_av_pa_config(struct au_in *av,
 		   int device,
 		   PaStreamParameters *params,
-		   unsigned long *samples_per_buf)
+		   size_t *samples_per_buf)
 {
 	PaSampleFormat	sf;
 	enum error	err = E_OK;
@@ -234,7 +240,7 @@ audio_av_decode(struct au_in *av, char **buf, size_t *n)
 static enum error
 conv_sample_fmt(enum AVSampleFormat in, PaSampleFormat *out)
 {
-	int		err = E_OK;
+	enum error	err = E_OK;
 
 	switch (in) {
 	case AV_SAMPLE_FMT_U8:
@@ -388,6 +394,5 @@ decode_packet(struct au_in *av, char **buf, size_t *n)
 		*buf = (char *)av->frame->extended_data[0];
 		*n = av->frame->nb_samples;
 	}
-
 	return err;
 }

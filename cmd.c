@@ -32,33 +32,35 @@
 typedef enum error (*nullary_cmd_ptr) (struct player *);
 typedef enum error (*unary_cmd_ptr) (struct player *, const char *);
 
-const int	WORD_LEN = 4;
+const size_t	WORD_LEN = 4;
 
 /* Commands */
-enum nullary_cmds {
+enum nullary_cmd {
 	CMD_PLAY,		/* Plays the currently LOADed file */
 	CMD_STOP,		/* Stops the currently PLAYing file */
 	CMD_EJECT,		/* Ejects the currently LOADed file */
 	CMD_QUIT,		/* Closes the player */
-	NUM_NULLARY_CMDS
+	NUM_NULLARY_CMDS,
+	NULLARY_CMDS_START = 0
 };
 
-enum unary_cmds {
+enum unary_cmd {
 	CMD_LOAD,		/* Loads a file into the EJECTed player */
 	CMD_SEEK,		/* Seeks somewhere in a PLAYing file */
-	NUM_UNARY_CMDS
+	NUM_UNARY_CMDS,
+	UNARY_CMDS_START = 0
 };
 
 const char     *NULLARY_WORDS[NUM_NULLARY_CMDS] = {
-	"PLAY",			/* CMD_PLAY */
-	"STOP",			/* CMD_STOP */
-	"EJCT",			/* CMD_EJECT */
-	"QUIT",			/* CMD_QUIT */
+	"play",			/* CMD_PLAY */
+	"stop",			/* CMD_STOP */
+	"ejct",			/* CMD_EJECT */
+	"quit",			/* CMD_QUIT */
 };
 
 const char     *UNARY_WORDS[NUM_UNARY_CMDS] = {
-	"LOAD",			/* CMD_LOAD */
-	"SEEK",			/* CMD_SEEK */
+	"load",			/* CMD_LOAD */
+	"seek",			/* CMD_SEEK */
 };
 
 nullary_cmd_ptr	NULLARY_FUNCS[NUM_NULLARY_CMDS] = {
@@ -101,7 +103,7 @@ handle_command(struct player *play)
 	char           *buffer = NULL;
 	char           *argument = NULL;
 	size_t		num_bytes = 0;
-	ssize_t		length;
+	size_t		length;
 
 	length = getline(&buffer, &num_bytes, stdin);
 	debug(0, "got command: %s", buffer);
@@ -111,7 +113,10 @@ handle_command(struct player *play)
 		printf("WHAT Need a command word\n");
 	} else {
 		/* Find start of argument(s) */
-		ssize_t		i;
+		size_t		i;
+		ssize_t		j;
+		enum error	result;
+		bool		gotcmd = false;
 
 		for (i = WORD_LEN; i < length && argument == NULL; i++) {
 			if (!isspace(buffer[i])) {
@@ -125,13 +130,9 @@ handle_command(struct player *play)
 		 * Strip any whitespace out of the argument (by setting it to
 		 * the null character, thus null-terminating the argument)
 		 */
-		ssize_t		j;
-
 		for (j = length - 1; isspace(buffer[j]); i--)
 			buffer[j] = '\0';
 
-		bool		gotcmd = false;
-		enum error	result;
 
 		gotcmd = try_nullary(play, buffer, argument, &result);
 		if (!gotcmd)
@@ -152,14 +153,15 @@ try_nullary(struct player *play,
 	int		n;
 	bool		gotcmd = false;
 
-	for (n = 0; n < NUM_NULLARY_CMDS && !gotcmd; n++) {
+	for (n = (int)NULLARY_CMDS_START;
+	     n < (int)NUM_NULLARY_CMDS && !gotcmd;
+	     n += 1) {
 		if (strncmp(NULLARY_WORDS[n], buf, WORD_LEN) == 0) {
 			gotcmd = true;
-			if (arg == NULL) {
+			if (arg == NULL)
 				*result = NULLARY_FUNCS[n] (play);
-			} else {
+			else
 				printf("WHAT Not expecting argument\n");
-			}
 		}
 	}
 
@@ -175,14 +177,15 @@ try_unary(struct player *play,
 	int		u;
 	bool		gotcmd = false;
 
-	for (u = 0; u < NUM_UNARY_CMDS && !gotcmd; u++) {
+	for (u = (int)UNARY_CMDS_START;
+	     u < (int)NUM_UNARY_CMDS && !gotcmd;
+	     u += 1) {
 		if (strncmp(UNARY_WORDS[u], buf, WORD_LEN) == 0) {
 			gotcmd = true;
-			if (arg != NULL) {
+			if (arg != NULL)
 				*result = UNARY_FUNCS[u] (play, arg);
-			} else {
+			else
 				printf("WHAT Expecting argument\n");
-			}
 		}
 	}
 
