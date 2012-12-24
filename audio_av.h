@@ -42,6 +42,8 @@
 
 #include <libavformat/avformat.h>
 
+#include "errors.h"		/* enum error */
+
 /**  DATA TYPES  **************************************************************/
 
 /* The audio input structure (thusly named in case we ever generalise
@@ -52,6 +54,13 @@
  * definition.
  */
 struct au_in;
+
+/* A structure containing a lump of decoded frame data.
+ *
+ * struct au_frame is an opaque structure; only audio_av.c knows its true
+ * definition.
+ */
+struct au_frame;
 
 /**  FUNCTIONS ****************************************************************/
 
@@ -73,10 +82,9 @@ audio_av_pa_config(struct au_in *av,	/* ffmpeg audio structure */
 		   PaStreamParameters *params,
 		   unsigned long *samples_per_buf);
 
-enum error      audio_av_decode(struct au_in *av, char **buf, unsigned long *n);
+enum error	audio_av_decode(struct au_in *av, char **buf, size_t *n);
 double		audio_av_sample_rate(struct au_in *av);
-size_t		audio_av_bytes2samples(struct au_in *av, unsigned long bytes);
-unsigned long	audio_av_samples2bytes(struct au_in *av, size_t samples);
+size_t		audio_av_bytes2samples(struct au_in *av, size_t bytes);
+size_t		audio_av_samples2bytes(struct au_in *av, size_t samples);
 
-
-#endif				/* !AUDIO_AV_H */
+#endif				/* not AUDIO_AV_H */

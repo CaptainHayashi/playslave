@@ -5,11 +5,13 @@
 -TPaStreamCallbackResult
 -TPaStreamParameters
 -TPaSampleFormat
+-TPaUtilRingBuffer
 -TAVCodec
 -TAVFormatContext
 -TAVFrame
 -TAVPacket
 -TAVStream
+-Tring_buffer_size_t
 -TFILE
 -TLIST_ENTRY
 -TLIST_HEAD

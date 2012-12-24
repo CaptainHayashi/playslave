@@ -8,7 +8,7 @@
  *        Version:  1.0
  *        Created:  23/12/2012 01:21:49
  *       Revision:  none
- *       Compiler:  gcc
+ *       Compiler:  clang
  *
  *         Author:  Matt Windsor (CaptainHayashi), matt.windsor@ury.york.ac.uk
  *        Company:  University Radio York Computing Team
@@ -73,7 +73,7 @@ static enum error au_init_stream(struct au_in *av);
 static enum error au_init_codec(struct au_in *av, int stream, AVCodec *codec);
 static enum error au_init_frame(struct au_in *av);
 static enum error au_init_packet(AVPacket **packet, uint8_t *buffer);
-static enum error decode_packet(struct au_in *av, char **buf, unsigned long *n);
+static enum error decode_packet(struct au_in *av, char **buf, size_t *n);
 static enum error conv_sample_fmt(enum AVSampleFormat in, PaSampleFormat *out);
 static enum error
 setup_pa(PaSampleFormat sf, int device,
@@ -173,7 +173,7 @@ audio_av_sample_rate(struct au_in *av)
 
 /* Converts buffer size (in bytes) to sample count (in samples). */
 size_t
-audio_av_bytes2samples(struct au_in *av, unsigned long bytes)
+audio_av_bytes2samples(struct au_in *av, size_t bytes)
 {
 	return (bytes /
 		av->stream->codec->channels /
@@ -181,7 +181,7 @@ audio_av_bytes2samples(struct au_in *av, unsigned long bytes)
 }
 
 /* Converts sample count (in samples) to buffer size (in bytes). */
-unsigned long
+size_t
 audio_av_samples2bytes(struct au_in *av, size_t samples)
 {
 	return (samples *
@@ -205,7 +205,7 @@ audio_av_samples2bytes(struct au_in *av, size_t samples)
  * sensible values if E_OK is not returned.
  */
 enum error
-audio_av_decode(struct au_in *av, char **buf, unsigned long *n)
+audio_av_decode(struct au_in *av, char **buf, size_t *n)
 {
 	enum error	err = E_INCOMPLETE;
 
@@ -368,7 +368,7 @@ au_init_packet(AVPacket **packet, uint8_t *buffer)
 /*  Also see the non-static functions for the frontend for frame decoding */
 
 static enum error
-decode_packet(struct au_in *av, char **buf, unsigned long *n)
+decode_packet(struct au_in *av, char **buf, size_t *n)
 {
 	enum error	err = E_OK;
 	int		frame_finished = 0;

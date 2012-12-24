@@ -1,5 +1,21 @@
+/*
+ * =============================================================================
+ *
+ *       Filename:  audio.c
+ *
+ *    Description:  Low-level audio structure
+ *
+ *        Version:  1.0
+ *        Created:  24/12/2012 05:36:54
+ *       Revision:  none
+ *       Compiler:  clang
+ *
+ *         Author:  Matt Windsor (CaptainHayashi), matt.windsor@ury.org.uk
+ *        Company:  University Radio York Computing Team
+ *
+ * =============================================================================
+ */
 /*-
- * audio.c - low-level audio structure
  * Copyright (C) 2012  University Radio York Computing Team
  *
  * This file is a part of playslave.
@@ -29,10 +45,16 @@
 #include <libavcodec/avcodec.h>
 #include <portaudio.h>
 
+#include "contrib/pa_ringbuffer.h"
+
 #include "io.h"
 #include "player.h"
 #include "audio.h"
 #include "audio_av.h"
+
+/**  MACROS  ******************************************************************/
+
+#define RINGBUF_SIZE 32768	/* Number of samples in ring buffer */
 
 /**  DATA TYPES  **************************************************************/
 
@@ -43,13 +65,17 @@ struct audio {
 	char           *frame_ptr;
 	unsigned long	frame_samples;
 	/* PortAudio state */
+	PaUtilRingBuffer *ring_buf;
+	char           *ring_data;
 	PaStream       *out_strm;	/* Output stream */
 	int		device_id;	/* PortAudio device ID */
 };
 
 /**  STATIC PROTOTYPES  *******************************************************/
 
-static enum error au_init_sink(struct audio *au, int device);
+static enum error init_sink(struct audio *au, int device);
+static enum error init_ring_buf(struct audio *au, size_t bytes_per_sample);
+static enum error free_ring_buf(struct audio *au);
 
 /**  PUBLIC FUNCTIONS  ********************************************************/
 
@@ -86,7 +112,9 @@ audio_load(struct audio **au,
 	if (err == E_OK)
 		err = audio_av_load(&((*au)->av), path);
 	if (err == E_OK)
-		err = au_init_sink(*au, device);
+		err = init_ring_buf(*au, audio_av_samples2bytes((*au)->av, 1));
+	if (err == E_OK)
+		err = init_sink(*au, device);
 
 	return err;
 }
@@ -95,7 +123,9 @@ void
 audio_unload(struct audio *au)
 {
 	if (au != NULL) {
+		free_ring_buf(au);
 		audio_av_unload(au->av);
+
 		if (au->out_strm != NULL) {
 			Pa_CloseStream(au->out_strm);
 			au->out_strm = NULL;
@@ -136,12 +166,13 @@ audio_stop(struct audio *au)
 	else
 		debug(0, "audio stopped");
 
+	/* TODO: Possibly recover from dropping frames due to abort. */
 	return err;
 }
 
-/*
- * Inspecting the audio structure
- */
+/*----------------------------------------------------------------------------
+ *  Inspecting the audio structure
+ *----------------------------------------------------------------------------*/
 
 enum error
 audio_error(struct audio *au)
@@ -149,10 +180,24 @@ audio_error(struct audio *au)
 	return au->last_err;
 }
 
+enum error
+audio_decode(struct audio *au)
+{
+	char           *buf;
+	size_t		n;
+	enum error	err;
+
+	err = audio_av_decode(au->av, &buf, &n);
+	if (err == E_OK) {
+
+	}
+	return err;
+}
+
 /**  STATIC FUNCTIONS  ********************************************************/
 
 static enum error
-au_init_sink(struct audio *au, int device)
+init_sink(struct audio *au, int device)
 {
 	PaError		pa_err;
 	double		sample_rate;
@@ -177,9 +222,64 @@ au_init_sink(struct audio *au, int device)
 	return err;
 }
 
-/*
- * Callbacks
+/*----------------------------------------------------------------------------
+ *  The ring buffer
+ *----------------------------------------------------------------------------*/
+
+/* Initialises an audio structure's ring buffer so that decoded
+ * samples can be placed into it.
+ *
+ * Any existing ring buffer will be freed.
+ *
+ * The number of bytes for each sample must be provided; see
+ * audio_av_samples2bytes for one way of getting this.
  */
+static enum error
+init_ring_buf(struct audio *au, size_t bytes_per_sample)
+{
+	enum error	err = E_OK;
+
+	/* Get rid of any existing ring buffer stuff */
+	free_ring_buf(au);
+
+	au->ring_data = calloc((size_t)RINGBUF_SIZE, bytes_per_sample);
+	if (au->ring_data == NULL)
+		err = error(E_NO_MEM, "couldn't alloc ringbuf data buffer");
+	if (err == E_OK) {
+		au->ring_buf = calloc((size_t)1, sizeof(PaUtilRingBuffer));
+		if (au->ring_buf == NULL)
+			err = error(E_NO_MEM, "couldn't alloc ringbuf struct");
+	}
+	if (err == E_OK) {
+		if (PaUtil_InitializeRingBuffer(au->ring_buf,
+				       (ring_buffer_size_t)bytes_per_sample,
+					   (ring_buffer_size_t)RINGBUF_SIZE,
+						au->ring_data) != 0)
+			err = error(E_INTERNAL_ERROR, "ringbuf failed to init");
+	}
+	return err;
+}
+
+/* Frees an audio structure's ring buffer. */
+static enum error
+free_ring_buf(struct audio *au)
+{
+	enum error	err = E_OK;
+
+	if (au->ring_buf != NULL) {
+		debug(0, "freeing existing ringbuf");
+		free(au->ring_buf);
+	}
+	if (au->ring_data != NULL) {
+		debug(0, "freeing existing ringbuf data buffer");
+		free(au->ring_data);
+	}
+	return err;
+}
+
+/*----------------------------------------------------------------------------
+ *  Callbacks
+ *----------------------------------------------------------------------------*/
 
 static int
 au_cb_play(const void *in,
@@ -199,9 +299,10 @@ au_cb_play(const void *in,
 	char           *cout = (char *)out;
 	unsigned long	frames_written = 0;
 
-	in = (const void *)in;	/* Allow a safe ignore */
-	timeInfo = (const void *)timeInfo;	/* And here */
-	statusFlags = statusFlags | 0;	/* Also here */
+	/* Ignoring these arguments */
+	in = (const void *)in;
+	timeInfo = (const void *)timeInfo;
+	statusFlags = statusFlags | 0;
 
 	while (result == paContinue && frames_written < frames_per_buf) {
 		if (au->frame_samples == 0) {
@@ -209,7 +310,7 @@ au_cb_play(const void *in,
 
 			au->last_err = err = audio_av_decode(au->av,
 							   &(au->frame_ptr),
-							&(au->frame_samples));
+						      &(au->frame_samples));
 			switch (err) {
 			case E_OK:
 				break;
@@ -236,6 +337,7 @@ au_cb_play(const void *in,
 			memcpy(cout,
 			       au->frame_ptr,
 			       bytes);
+
 			cout += bytes;
 			au->frame_ptr += bytes;
 			au->frame_samples -= samples;
