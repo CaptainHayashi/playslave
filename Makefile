@@ -1,26 +1,30 @@
-CC := clang
-CFLAGS := -g -Wall -Wextra -Werror --std=c99 `pkg-config --cflags libavformat1 libavcodec1 portaudio-2.0`
-LIBS := `pkg-config --libs libavformat1 libavcodec1 portaudio-2.0`
+.POSIX:
 
-OBJS := main.o player.o io.o cmd.o audio.o audio_av.o
+# Programs
+CC=		clang
+TOUCH=		touch
+RM=		rm
 
-main: $(OBJS) 
-	$(CC) -o main $(OBJS) $(LIBS)
+# Target
+PROG=		main
+WARNS?=		-Wall -Wextra -Werror
 
-main.o: main.c
-	$(CC) -c -o main.o main.c $(CFLAGS)
+PKGS=		libavformat1 libavcodec1 portaudio-2.0
+CFLAGS+=	-g --std=c99 `pkg-config --cflags $(PKGS)`
+LIBS=		`pkg-config --libs $(PKGS)`
 
-player.o: player.c
-	$(CC) -c -o player.o player.c $(CFLAGS)
+OBJS=		 main.o player.o io.o cmd.o audio.o audio_av.o
 
-io.o: io.c
-	$(CC) -c -o io.o io.c $(CFLAGS)
+$(PROG): $(OBJS) 
+	@echo "LINK	$@"
+	@$(CC) -o $@ $(OBJS) $(LIBS)
 
-cmd.o: cmd.c
-	$(CC) -c -o cmd.o cmd.c $(CFLAGS)
+.c.o:
+	@echo "CC	$@"
+	@$(CC) -c -o $@ $< $(WARNS) $(CFLAGS) 
 
-audio.o: audio.c
-	$(CC) -c -o audio.o audio.c $(CFLAGS)
+clean: FORCE
+	@$(TOUCH) $(PROG) $(OBJS)
+	@$(RM) $(PROG) $(OBJS)
 
-audio_av.o: audio_av.c
-	$(CC) -c -o audio_av.o audio_av.c $(CFLAGS)
+FORCE:
