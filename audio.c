@@ -35,6 +35,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301, USA.
  */
+
 #define _POSIX_C_SOURCE 200809
 
 /**  INCLUDES  ****************************************************************/
@@ -134,7 +135,7 @@ audio_unload(struct audio *au)
 }
 
 /*----------------------------------------------------------------------------
- *  Starting and stopping the stream
+ *  Playback control
  *----------------------------------------------------------------------------*/
 
 enum error
@@ -198,9 +199,9 @@ audio_halted(struct audio *au)
  * do not expect it to be highly accurate.
  */
 uint64_t
-audio_msec(struct audio *au)
+audio_usec(struct audio *au)
 {
-	return (au->used_samples * MSECS_IN_SEC) / audio_av_sample_rate(au->av);
+	return audio_av_samples2usec(au->av, au->used_samples);
 }
 
 /*----------------------------------------------------------------------------
@@ -346,7 +347,7 @@ au_cb_play(const void *in,
 	/* Ignoring these arguments */
 	in = (const void *)in;
 	timeInfo = (const void *)timeInfo;
-	statusFlags = statusFlags | 0;
+	statusFlags = (int)statusFlags;
 
 	while (result == paContinue && frames_written < frames_per_buf) {
 		avail = PaUtil_GetRingBufferReadAvailable(au->ring_buf);
@@ -382,6 +383,7 @@ au_cb_play(const void *in,
 			}
 		} else {
 			unsigned long	samples;
+
 			/* How many samples do we have? */
 			if (avail > frames_per_buf - frames_written)
 				samples = frames_per_buf - frames_written;
@@ -397,7 +399,6 @@ au_cb_play(const void *in,
 					       (ring_buffer_size_t)samples);
 			frames_written += samples;
 			au->used_samples += samples;
-			break;
 		}
 	}
 	return (int)result;

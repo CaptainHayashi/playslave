@@ -174,8 +174,22 @@ audio_av_sample_rate(struct au_in *av)
 }
 
 /*----------------------------------------------------------------------------
- *  Converting between byte counts and sample counts
+ *  Unit conversion
  *----------------------------------------------------------------------------*/
+
+/* Converts stream position (in microseconds) to estimated sample count. */
+size_t
+audio_av_usec2samples(struct au_in *av, uint64_t usec)
+{
+	return (usec * audio_av_sample_rate(av)) / USECS_IN_SEC;
+}
+
+/* Converts sample count to estimated stream position (in microseconds). */
+uint64_t
+audio_av_samples2usec(struct au_in *av, size_t samples)
+{
+	return (samples * USECS_IN_SEC) / audio_av_sample_rate(av);
+}
 
 /* Converts buffer size (in bytes) to sample count (in samples). */
 size_t

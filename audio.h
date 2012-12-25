@@ -54,6 +54,6 @@ enum error	audio_stop(struct audio *au);	/* Stops playback */
 enum error	audio_error(struct audio *au);	/* Gets last playback error */
 enum error	audio_decode(struct audio *au);	/* Does some decoding work */
 enum error	audio_halted(struct audio *au); /* Has stream halted itself? */
-uint64_t	audio_msec(struct audio *au);	/* Current time in song */
+uint64_t	audio_usec(struct audio *au);	/* Current time in song */
 
 #endif				/* !AUDIO_H */

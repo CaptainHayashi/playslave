@@ -20,25 +20,23 @@
  *
  * This file is a part of playslave.
  *
- * playslave is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published
- * by the Free Software Foundation; either version 2 of the License,
- * or (at your option) any later version.
+ * playslave is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software
+ * Foundation; either version 2 of the License, or (at your option) any later
+ * version.
  *
- * playslave is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
+ * playslave is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with playslave; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
- * 02110-1301, USA.
+ * You should have received a copy of the GNU General Public License along with
+ * playslave; if not, write to the Free Software Foundation, Inc., 51 Franklin
+ * Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/**  INCLUDES  ****************************************************************/
-
 #define _POSIX_C_SOURCE 200809
+
+/**  INCLUDES  ****************************************************************/
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -90,7 +88,7 @@ player_free(struct player *play)
 enum error
 player_ejct(struct player *play)
 {
-	enum error	result;
+	enum error	err = E_OK;
 
 	switch (play->cstate) {
 	case STOPPED:
@@ -103,20 +101,19 @@ player_ejct(struct player *play)
 		play->cstate = EJECTED;
 		play->ptime = 0;
 
-		result = E_OK;
 		debug(0, "player ejected");
 		break;
 	case EJECTED:
 		/* Ejecting while ejected is harmless and common */
 		break;
 	case QUITTING:
-		result = error(E_BAD_STATE, "player is shutting down");
+		err = error(E_BAD_STATE, "player is shutting down");
 		break;
 	default:
-		result = error(E_BAD_STATE, "unknown state");
+		err = error(E_BAD_STATE, "unknown state");
 	}
 
-	return result;
+	return err;
 }
 
 enum error
@@ -204,8 +201,8 @@ player_update(struct player *pl)
 		if (audio_halted(pl->au)) {
 			err = player_ejct(pl);
 		} else {
-			uint64_t time = audio_msec(pl->au);
-			if (time / TIME_MSECS > pl->ptime / TIME_MSECS) {
+			uint64_t time = audio_usec(pl->au);
+			if (time / TIME_USECS > pl->ptime / TIME_USECS) {
 				debug(0, "TIME %u", time);
 			}
 			pl->ptime = time;

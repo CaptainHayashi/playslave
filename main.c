@@ -57,7 +57,7 @@ main(int argc, char *argv[])
 	/* TODO: cleanup */
 	int		driver;
 	int		exit_code;
-	enum error	err;
+	enum error	err = E_OK;
 	struct player  *context = NULL;
 
 	if (Pa_Initialize() != (int)paNoError)
@@ -78,7 +78,8 @@ main(int argc, char *argv[])
 		exit_code = EXIT_SUCCESS;
 	else
 		exit_code = EXIT_FAILURE;
-	return 0;
+
+	return exit_code;
 }
 
 static enum error

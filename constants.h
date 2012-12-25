@@ -20,20 +20,18 @@
  *
  * This file is a part of playslave.
  *
- * playslave is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published
- * by the Free Software Foundation; either version 2 of the License,
- * or (at your option) any later version.
+ * playslave is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software
+ * Foundation; either version 2 of the License, or (at your option) any later
+ * version.
  *
- * playslave is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
+ * playslave is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with playslave; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
- * 02110-1301, USA.
+ * You should have received a copy of the GNU General Public License along with
+ * playslave; if not, write to the Free Software Foundation, Inc., 51 Franklin
+ * Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
 #ifndef CONSTANTS_H
@@ -44,7 +42,7 @@
 const size_t	BUFFER_SIZE;	/* Number of bytes in decoding buffer */
 const size_t	RINGBUF_SIZE;	/* Number of samples in ring buffer */
 
-const uint64_t	MSECS_IN_SEC;	/* Number of microseconds in a second */
-const uint64_t	TIME_MSECS;	/* Number of microseconds between TIME pulses */
+const uint64_t	USECS_IN_SEC;	/* Number of microseconds in a second */
+const uint64_t	TIME_USECS;	/* Number of microseconds between TIME pulses */
 
 #endif				/* not CONSTANTS_H */

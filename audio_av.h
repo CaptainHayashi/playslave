@@ -40,6 +40,8 @@
 
 /**  INCLUDES  ****************************************************************/
 
+#include <stdint.h>             /* uint64_t */
+
 #include <libavformat/avformat.h>
 
 #include "errors.h"		/* enum error */
@@ -84,6 +86,10 @@ audio_av_pa_config(struct au_in *av,	/* ffmpeg audio structure */
 
 enum error	audio_av_decode(struct au_in *av, char **buf, size_t *n);
 double		audio_av_sample_rate(struct au_in *av);
+
+/* Unit conversion */
+uint64_t        audio_av_samples2usec(struct au_in *av, size_t samples);
+size_t          audio_av_usec2samples(struct au_in *av, uint64_t usec);
 size_t		audio_av_bytes2samples(struct au_in *av, size_t bytes);
 size_t		audio_av_samples2bytes(struct au_in *av, size_t samples);
 

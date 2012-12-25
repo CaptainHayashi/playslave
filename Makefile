@@ -1,7 +1,7 @@
 .POSIX:
 
 # Programs
-CC=		clang
+CC?=		clang
 TOUCH=		touch
 RM=		rm
 
