@@ -39,7 +39,7 @@
 
 #include <portaudio.h>
 
-#include "contrib/pa_ringbuffer.h" /* Ringbuffer */
+#include "contrib/pa_ringbuffer.h"	/* Ringbuffer */
 
 #include "audio.h"		/* Manipulating the audio structure */
 #include "io.h"			/* debug */
