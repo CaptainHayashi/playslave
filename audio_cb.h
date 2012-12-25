@@ -1,12 +1,12 @@
 /*
  * =============================================================================
  *
- *       Filename:  audio.h
+ *       Filename:  audio_cb.h
  *
- *    Description:  Interface to the mid-level audio structure and functions
+ *    Description:  Interface to the audio callback
  *
  *        Version:  1.0
- *        Created:  25/12/2012 05:39:46
+ *        Created:  25/12/2012 05:34:58
  *       Revision:  none
  *       Compiler:  clang
  *
@@ -34,8 +34,8 @@
  * Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef AUDIO_H
-#define AUDIO_H
+#ifndef AUDIO_CB_H
+#define AUDIO_CB_H
 
 /**  INCLUDES  ****************************************************************/
 
@@ -43,38 +43,14 @@
 
 #include "contrib/pa_ringbuffer.h"	/* PaUtilRingBuffer */
 
-#include "errors.h"		/* enum error */
-
-/**  DATA TYPES  **************************************************************/
-
-/* The audio structure contains all state pertaining to the currently
- * playing audio file.
- *
- * struct audio is an opaque structure; only audio.c knows its true
- * definition.
- */
-struct audio;
-
 /**  FUNCTIONS  ***************************************************************/
 
-/* Loads a file and constructs an audio structure to hold the playback
- * state.
- */
-enum error
-audio_load(struct audio **au,	/* Location for the audio struct pointer */
-	   const char *path,	/* File to load into the audio struct */
-	   int device);		/* ID of the device to play out on */
-void		audio_unload(struct audio *au);	/* Frees an audio struct */
+int
+audio_cb_play(const void *in,
+	      void *out,
+	      unsigned long frames_per_buf,
+	      const PaStreamCallbackTimeInfo *timeInfo,
+	      PaStreamCallbackFlags statusFlags,
+	      void *v_au);
 
-enum error	audio_start(struct audio *au);	/* Starts playback */
-enum error	audio_stop(struct audio *au);	/* Stops playback */
-enum error	audio_decode(struct audio *au);	/* Does some decoding work */
-
-enum error	audio_error(struct audio *au);	/* Gets last playback error */
-enum error	audio_halted(struct audio *au);	/* Has stream halted itself? */
-uint64_t	audio_usec(struct audio *au);	/* Current time in song */
-PaUtilRingBuffer *audio_ringbuf(struct audio *au);	/* Get ring buffer */
-
-void		audio_inc_used_samples(struct audio *au, uint64_t samples);
-
-#endif				/* not AUDIO_H */
+#endif				/* not AUDIO_CB_H */

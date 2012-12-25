@@ -3,7 +3,7 @@
  *
  *       Filename:  audio.c
  *
- *    Description:  Low-level audio structure
+ *    Description:  Mid-level audio structure and functions
  *
  *        Version:  1.0
  *        Created:  24/12/2012 05:36:54
@@ -20,20 +20,18 @@
  *
  * This file is a part of playslave.
  *
- * playslave is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published
- * by the Free Software Foundation; either version 2 of the License,
- * or (at your option) any later version.
+ * playslave is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software
+ * Foundation; either version 2 of the License, or (at your option) any later
+ * version.
  *
- * playslave is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
+ * playslave is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with playslave; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
- * 02110-1301, USA.
+ * You should have received a copy of the GNU General Public License along with
+ * playslave; if not, write to the Free Software Foundation, Inc., 51 Franklin
+ * Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
 #define _POSIX_C_SOURCE 200809
@@ -48,6 +46,7 @@
 
 #include "audio.h"
 #include "audio_av.h"
+#include "audio_cb.h"		/* audio_cb_play */
 #include "constants.h"
 #include "io.h"
 #include "player.h"
@@ -75,18 +74,6 @@ static enum error init_ring_buf(struct audio *au, size_t bytes_per_sample);
 static enum error free_ring_buf(struct audio *au);
 
 /**  PUBLIC FUNCTIONS  ********************************************************/
-
-/*
- * PortAudio callback prototypes
- */
-
-static int
-au_cb_play(const void *in,
-	   void *out,
-	   unsigned long frames_per_buf,
-	   const PaStreamCallbackTimeInfo *timeInfo,
-	   PaStreamCallbackFlags statusFlags,
-	   void *v_au);
 
 /*-----------------------------------------------------------------------------
  * Loading and unloading
@@ -173,12 +160,19 @@ audio_stop(struct audio *au)
  *  Inspecting the audio structure
  *----------------------------------------------------------------------------*/
 
+/* Returns the last decoding error, or E_OK if the last decode succeeded. */
 enum error
 audio_error(struct audio *au)
 {
 	return au->last_err;
 }
 
+/* Checks to see if audio playback has halted of its own accord.
+ *
+ * If audio is still playing, E_OK will be returned; otherwise the decoding
+ * error that caused playback to halt will be returned.  E_UNKNOWN is returned
+ * if playback has halted but the last error report was E_OK.
+ */
 enum error
 audio_halted(struct audio *au)
 {
@@ -195,13 +189,36 @@ audio_halted(struct audio *au)
 
 /* Gets the current played position in the song, in microseconds.
  *
- * As this may be executing whilst the playing callback is executing,
+ * As this may be executing whilst the playing callback is running,
  * do not expect it to be highly accurate.
  */
 uint64_t
 audio_usec(struct audio *au)
 {
 	return audio_av_samples2usec(au->av, au->used_samples);
+}
+
+/* Gets the ring buffer that the playing callback should use to get decoded
+ * samples.
+ */
+PaUtilRingBuffer *
+audio_ringbuf(struct audio *au)
+{
+	return au->ring_buf;
+}
+
+
+/*----------------------------------------------------------------------------
+ *  Playback position
+ *----------------------------------------------------------------------------*/
+
+/* Increments the used samples counter, which is used to determine the current
+ * position in the song, by 'samples' samples.
+ */
+void
+audio_inc_used_samples(struct audio *au, uint64_t samples)
+{
+	au->used_samples += samples;
 }
 
 /*----------------------------------------------------------------------------
@@ -263,7 +280,7 @@ init_sink(struct audio *au, int device)
 			       sample_rate,
 			       samples_per_buf,
 			       paClipOff,
-			       au_cb_play,
+			       audio_cb_play,
 			       (void *)au);
 	if (pa_err)
 		err = error(E_AUDIO_INIT_FAIL, "couldn't open stream");
@@ -324,82 +341,4 @@ free_ring_buf(struct audio *au)
 		free(au->ring_data);
 	}
 	return err;
-}
-
-/*----------------------------------------------------------------------------
- *  Callbacks
- *----------------------------------------------------------------------------*/
-
-static int
-au_cb_play(const void *in,
-	   void *out,
-	   unsigned long frames_per_buf,
-	   const PaStreamCallbackTimeInfo *timeInfo,
-	   PaStreamCallbackFlags statusFlags,
-	   void *v_au)
-{
-	unsigned long	avail;
-	PaStreamCallbackResult result = paContinue;
-	struct audio   *au = (struct audio *)v_au;
-	char           *cout = (char *)out;
-	unsigned long	frames_written = 0;
-
-	/* Ignoring these arguments */
-	in = (const void *)in;
-	timeInfo = (const void *)timeInfo;
-	statusFlags = (int)statusFlags;
-
-	while (result == paContinue && frames_written < frames_per_buf) {
-		avail = PaUtil_GetRingBufferReadAvailable(au->ring_buf);
-		if (avail == 0) {
-			/*
-			 * We've run out of sound, ruh-roh. Let's see if
-			 * something went awry during the last decode
-			 * cycle...
-			 */
-
-			switch (au->last_err) {
-			case E_EOF:
-				/*
-				 * We've just hit the end of the file.
-				 * Nothing to worry about!
-				 */
-				result = paComplete;
-				break;
-			case E_INCOMPLETE:
-				/*
-				 * Looks like we're just waiting for the
-				 * decoding to go through. In other words,
-				 * this is a buffer underflow.
-				 */
-				debug(0, "buffer underflow");
-				/* Break out of the loop inelegantly */
-				frames_written = frames_per_buf;
-				break;
-			default:
-				/* Something genuinely went tits-up. */
-				result = paAbort;
-				break;
-			}
-		} else {
-			unsigned long	samples;
-
-			/* How many samples do we have? */
-			if (avail > frames_per_buf - frames_written)
-				samples = frames_per_buf - frames_written;
-			else
-				samples = avail;
-
-			/*
-			 * TODO: handle the ulong->long cast more gracefully,
-			 * perhaps.
-			 */
-			cout += PaUtil_ReadRingBuffer(au->ring_buf,
-						      cout,
-					       (ring_buffer_size_t)samples);
-			frames_written += samples;
-			au->used_samples += samples;
-		}
-	}
-	return (int)result;
 }
