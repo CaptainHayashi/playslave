@@ -75,6 +75,11 @@ enum error	audio_halted(struct audio *au);	/* Has stream halted itself? */
 uint64_t	audio_usec(struct audio *au);	/* Current time in song */
 PaUtilRingBuffer *audio_ringbuf(struct audio *au);	/* Get ring buffer */
 
+enum error	audio_seek_usec(struct audio *au, uint64_t usec);
 void		audio_inc_used_samples(struct audio *au, uint64_t samples);
+
+enum error audio_spin_up(struct audio *au);
+
+size_t audio_samples2bytes(struct audio *au, size_t samples);
 
 #endif				/* not AUDIO_H */

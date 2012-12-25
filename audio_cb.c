@@ -37,6 +37,8 @@
 
 /**  INCLUDES  ****************************************************************/
 
+#include <string.h>
+
 #include <portaudio.h>
 
 #include "contrib/pa_ringbuffer.h"	/* Ringbuffer */
@@ -85,6 +87,7 @@ audio_cb_play(const void *in,
 				 */
 				result = paComplete;
 				break;
+			case E_OK:
 			case E_INCOMPLETE:
 				/*
 				 * Looks like we're just waiting for the
@@ -93,6 +96,11 @@ audio_cb_play(const void *in,
 				 */
 				debug(0, "buffer underflow");
 				/* Break out of the loop inelegantly */
+				memset(cout,
+						0,
+						audio_samples2bytes(au,
+frames_per_buf)
+				      );
 				frames_written = frames_per_buf;
 				break;
 			default:

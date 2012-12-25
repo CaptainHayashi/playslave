@@ -38,6 +38,8 @@
 
 /**  INCLUDES  ****************************************************************/
 
+#include <stdarg.h>		/* gate_state */
+#include <stdbool.h>		/* bool */
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -58,7 +60,33 @@ struct player {
 	uint64_t	ptime;	/* Last observed time in song */
 };
 
+/**  GLOBAL VARIABLES  ********************************************************/
+
+/* Names of the states in enum state. */
+const char     *STATE_NAMES[NUM_STATES] = {
+	"VOID",
+	"EJECTED",
+	"STOPPED",
+	"PLAYING",
+	"QUITTING",
+};
+
+/* This should be long enough to hold all the state names above separated with
+ * spaces and null-terminated.
+ */
+const size_t	STATE_NAME_BUF = 256;
+
+enum state	GEND = VOID;
+
+/**  STATIC PROTOTYPES  *******************************************************/
+
+enum error	gate_state(struct player *play, enum state s1,...);
+
 /**  PUBLIC FUNCTIONS  ********************************************************/
+
+/*----------------------------------------------------------------------------
+ *  Initialisation and de-initialisation
+ *----------------------------------------------------------------------------*/
 
 enum error
 player_init(struct player **play, int device)
@@ -71,9 +99,10 @@ player_init(struct player **play, int device)
 			err = E_NO_MEM;
 		}
 	}
-	if (err == E_OK)
+	if (err == E_OK) {
+		(*play)->cstate = EJECTED;
 		(*play)->device = device;
-
+	}
 	return err;
 }
 
@@ -85,15 +114,17 @@ player_free(struct player *play)
 	free(play);
 }
 
+/*----------------------------------------------------------------------------
+ *  Nullary commands
+ *----------------------------------------------------------------------------*/
+
 enum error
 player_ejct(struct player *play)
 {
-	enum error	err = E_OK;
+	enum error	err;
 
-	switch (play->cstate) {
-	case STOPPED:
-	case PLAYING:
-	case VOID:
+	err = gate_state(play, STOPPED, PLAYING, EJECTED, GEND);
+	if (err == E_OK && player_state(play) != EJECTED) {
 		if (play->au != NULL) {
 			audio_unload(play->au);
 			play->au = NULL;
@@ -102,16 +133,8 @@ player_ejct(struct player *play)
 		play->ptime = 0;
 
 		debug(0, "player ejected");
-		break;
-	case EJECTED:
-		/* Ejecting while ejected is harmless and common */
-		break;
-	case QUITTING:
-		err = error(E_BAD_STATE, "player is shutting down");
-		break;
-	default:
-		err = error(E_BAD_STATE, "unknown state");
 	}
+	/* Ejecting while ejected is harmlessly ignored */
 
 	return err;
 }
@@ -119,69 +142,52 @@ player_ejct(struct player *play)
 enum error
 player_play(struct player *play)
 {
-	enum error	result;
+	enum error	err;
 
-	switch (play->cstate) {
-	case STOPPED:
-		result = audio_start(play->au);
-		if (result == E_OK)
-			play->cstate = PLAYING;
-		break;
-	case PLAYING:
-		result = error(E_BAD_STATE, "already playing");
-		break;
-	case EJECTED:
-		result = error(E_BAD_STATE, "nothing loaded");
-		break;
-	case VOID:
-		result = error(E_BAD_STATE, "init only to ejected");
-		break;
-	case QUITTING:
-		result = error(E_BAD_STATE, "player is shutting down");
-		break;
-	default:
-		result = error(E_BAD_STATE, "unknown state");
-		break;
-	}
+	err = gate_state(play, STOPPED, GEND);
+	if (err == E_OK)
+		err = audio_start(play->au);
+	if (err == E_OK)
+		play->cstate = PLAYING;
 
-	return result;
+	return err;
+}
+
+enum error
+player_quit(struct player *play)
+{
+	enum error	err;
+
+	err = player_ejct(play);
+	play->cstate = QUITTING;
+
+	return err;
 }
 
 enum error
 player_stop(struct player *play)
 {
-	enum error	result;
+	enum error	err;
 
-	switch (play->cstate) {
-	case PLAYING:
-		result = audio_stop(play->au);
-		if (result == E_OK)
-			play->cstate = STOPPED;
-		break;
-	case STOPPED:
-		result = error(E_BAD_STATE, "already stopped");
-		break;
-	case EJECTED:
-		result = error(E_BAD_STATE, "can't stop - nothing loaded");
-		break;
-	case QUITTING:
-		result = error(E_BAD_STATE, "player is shutting down");
-		break;
-	default:
-		result = error(E_BAD_STATE, "unknown state");
-	}
+	err = gate_state(play, PLAYING, GEND);
+	if (err == E_OK)
+		err = audio_stop(play->au);
+	if (err == E_OK)
+		play->cstate = STOPPED;
 
-	return result;
+	return err;
 }
+
+/*----------------------------------------------------------------------------
+ *  Unary commands
+ *----------------------------------------------------------------------------*/
 
 enum error
 player_load(struct player *play, const char *filename)
 {
 	enum error	err;
 
-	err = audio_load(&(play->au),
-			 filename,
-			 play->device);
+	err = audio_load(&(play->au), filename, play->device);
 	if (err)
 		player_ejct(play);
 	else {
@@ -193,6 +199,43 @@ player_load(struct player *play, const char *filename)
 }
 
 enum error
+player_seek(struct player *play, const char *time_str)
+{
+	uint64_t	time;
+	char           *end;
+	enum error	err = E_OK;
+	enum state	state = play->cstate;
+
+	/* TODO: proper overflow checking */
+
+	time = (uint64_t)strtoull(time_str, &end, 10);
+
+	if (time_str == end)
+		err = error(E_BAD_COMMAND, "expecting number");
+	/* Allow second-based indexing for convenience */
+	else if (strcmp(end, "s") == 0 ||
+		 strcmp(end, "sec") == 0)
+		time *= USECS_IN_SEC;
+
+	/* Weed out any unwanted states */
+	if (err == E_OK)
+		err = gate_state(play, PLAYING, STOPPED, GEND);
+	/* We need the player engine stopped in order to seek */
+	if (err == E_OK && state == PLAYING)
+		err = player_stop(play);
+	if (err == E_OK)
+		err = audio_seek_usec(play->au, time);
+	/* If we were playing before we'd ideally like to resume */
+	if (err == E_OK && state == PLAYING)
+		err = player_play(play);
+
+	return err;
+}
+/*----------------------------------------------------------------------------
+ *  Miscellaneous
+ *----------------------------------------------------------------------------*/
+
+enum error
 player_update(struct player *pl)
 {
 	enum error	err = E_OK;
@@ -201,7 +244,7 @@ player_update(struct player *pl)
 		if (audio_halted(pl->au)) {
 			err = player_ejct(pl);
 		} else {
-			uint64_t time = audio_usec(pl->au);
+			uint64_t	time = audio_usec(pl->au);
 			if (time / TIME_USECS > pl->ptime / TIME_USECS) {
 				debug(0, "TIME %u", time);
 			}
@@ -210,24 +253,53 @@ player_update(struct player *pl)
 			err = audio_decode(pl->au);
 		}
 	}
-
-
 	return err;
-}
-
-enum error
-player_quit(struct player *play)
-{
-	enum error	result;
-
-	result = player_ejct(play);
-	play->cstate = QUITTING;
-
-	return result;
 }
 
 enum state
 player_state(struct player *play)
 {
 	return play->cstate;
+}
+
+/**  STATIC FUNCTIONS  ********************************************************/
+
+enum error
+gate_state(struct player *play, enum state s1,...)
+{
+	va_list		ap;
+	int		i;
+	enum state	state;
+	char		state_names[STATE_NAME_BUF];
+	char           *sep = " ";
+	char           *snptr;
+	enum error	err = E_OK;
+	bool		in_state = false;
+
+	state = player_state(play);
+	snptr = state_names;
+	*snptr = '\0';
+
+	va_start(ap, s1);
+	for (i = (int)s1; i != (int)VOID; i = va_arg(ap, int)) {
+		if ((int)state == i) {
+			in_state = true;
+			break;
+		} else {
+			strncat(snptr,
+				sep,
+				STATE_NAME_BUF - (snptr - state_names));
+			strncat(snptr,
+				STATE_NAMES[i],
+				STATE_NAME_BUF - (snptr - state_names));
+		}
+	}
+	va_end(ap);
+
+	if (!in_state)
+		err = error(E_BAD_STATE,
+			    "%s not in {%s }",
+			    STATE_NAMES[state], state_names);
+
+	return err;
 }

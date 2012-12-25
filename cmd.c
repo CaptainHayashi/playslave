@@ -72,7 +72,7 @@ nullary_cmd_ptr	NULLARY_FUNCS[NUM_NULLARY_CMDS] = {
 
 unary_cmd_ptr	UNARY_FUNCS[NUM_UNARY_CMDS] = {
 	player_load,		/* CMD_LOAD */
-	NULL			/* TODO: CMD_SEEK */
+	player_seek		/* CMD_SEEK */
 };
 
 static void	handle_command(struct player *play);

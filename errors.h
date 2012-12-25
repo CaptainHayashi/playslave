@@ -48,6 +48,7 @@ enum error {
 	/* User errors */
 	E_NO_FILE,		/* Tried to read nonexistent file */
 	E_BAD_STATE,		/* State transition not allowed */
+        E_BAD_COMMAND,          /* Command was malformed */
 	/* Environment errors */
 	E_BAD_FILE,		/* Tried to read corrupt file */
 	E_BAD_CONFIG,		/* Program improperly configured */

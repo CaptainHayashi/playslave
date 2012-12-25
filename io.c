@@ -32,6 +32,7 @@ const char     *ERRORS[NUM_ERRORS] = {
 	/* User errors */
 	"NO_FILE",		/* E_NO_FILE */
 	"BAD_STATE",		/* E_BAD_STATE */
+	"BAD_COMMAND",		/* E_BAD_COMMAND */
 	/* Environment errors */
 	"BAD_FILE",		/* E_BAD_FILE */
 	"BAD_CONFIG",		/* E_BAD_CONFIG */

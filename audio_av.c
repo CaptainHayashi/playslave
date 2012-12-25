@@ -210,6 +210,28 @@ audio_av_samples2bytes(struct au_in *av, size_t samples)
 }
 
 /*----------------------------------------------------------------------------
+ *  Seeking
+ *----------------------------------------------------------------------------*/
+
+/* Attempts to seek to the position 'samples' samples into the file. */
+enum error
+audio_av_seek(struct au_in *av, uint64_t usec)
+{
+	int64_t		seek_pos;
+	enum error	err = E_OK;
+
+	seek_pos = ((usec * av->stream->time_base.den) /
+			av->stream->time_base.num) / USECS_IN_SEC;
+	if (av_seek_frame(av->context,
+			  av->stream_id,
+			  (int64_t)seek_pos,
+			  AVSEEK_FLAG_ANY) != 0)
+		err = error(E_INTERNAL_ERROR, "seek failed");
+
+	return err;
+}
+
+/*----------------------------------------------------------------------------
  *  Decoding frames
  *----------------------------------------------------------------------------*/
 

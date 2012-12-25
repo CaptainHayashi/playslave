@@ -130,10 +130,13 @@ audio_start(struct audio *au)
 	PaError		pa_err;
 	enum error	err = E_OK;
 
-	pa_err = Pa_StartStream(au->out_strm);
-	if (pa_err)
-		err = error(E_INTERNAL_ERROR, "couldn't start stream");
-	else
+	err = audio_spin_up(au);
+	if (err == E_OK) {
+		pa_err = Pa_StartStream(au->out_strm);
+		if (pa_err)
+			err = error(E_INTERNAL_ERROR, "couldn't start stream");
+	}
+	if (err == E_OK)
 		debug(0, "audio started");
 
 	return err;
@@ -206,10 +209,67 @@ audio_ringbuf(struct audio *au)
 	return au->ring_buf;
 }
 
+size_t
+audio_samples2bytes(struct audio *au, size_t samples)
+{
+	return audio_av_samples2bytes(au->av, samples);
+}
+
+/*----------------------------------------------------------------------------
+ *  Spin-up
+ *----------------------------------------------------------------------------*/
+
+/* Tries to fill the audio buffer by decoding as much as can fit into it.
+ *
+ * If end of file is reached, it is ignored and converted to E_OK so that it can
+ * later be caught by the player callback once it runs out of sound.
+ */
+enum error
+audio_spin_up(struct audio *au)
+{
+	ring_buffer_size_t  c;
+	enum error	err;
+	PaUtilRingBuffer *r = au->ring_buf;
+
+	for (err = E_OK, c = PaUtil_GetRingBufferWriteAvailable(r);
+	     err == E_OK && c > 0;
+	     err = audio_decode(au), c = PaUtil_GetRingBufferWriteAvailable(r));
+
+	/* Allow EOF, this'll be caught by the player callback once it hits the
+	 * end of file itself
+	 */
+	if (err == E_EOF)
+		err = E_OK;
+
+	return err;
+}
 
 /*----------------------------------------------------------------------------
  *  Playback position
  *----------------------------------------------------------------------------*/
+
+/* Attempts to seek to the given position in microseconds. */
+enum error
+audio_seek_usec(struct audio *au, uint64_t usec)
+{
+	size_t		samples;
+	enum error	err = E_OK;
+
+	samples = audio_av_usec2samples(au->av, usec);
+
+	if (err == E_OK) {
+		while (!Pa_IsStreamStopped(au->out_strm));	/* Spin until stream
+								 * finishes */
+		PaUtil_FlushRingBuffer(au->ring_buf);
+		err = audio_av_seek(au->av, usec);
+	}
+	if (err == E_OK) {
+		au->frame_samples = 0;
+		au->last_err = E_INCOMPLETE;
+		au->used_samples = samples;	/* Update position marker */
+	}
+	return err;
+}
 
 /* Increments the used samples counter, which is used to determine the current
  * position in the song, by 'samples' samples.
@@ -231,9 +291,15 @@ audio_decode(struct audio *au)
 	unsigned long	count;
 	enum error	err = E_OK;
 
+	if (au->frame_samples == 0) {
+		/* We need to decode some new frames! */
+		err = audio_av_decode(au->av,
+				      &(au->frame_ptr),
+				      &(au->frame_samples));
+	}
 	cap = (unsigned long)PaUtil_GetRingBufferWriteAvailable(au->ring_buf);
 	count = (cap < au->frame_samples ? cap : au->frame_samples);
-	if (count > 0) {
+	if (count > 0 && err == E_OK) {
 		/*
 		 * We can copy some already decoded samples into the ring
 		 * buffer
@@ -248,12 +314,6 @@ audio_decode(struct audio *au)
 
 		au->frame_samples -= num_written;
 		au->frame_ptr += audio_av_samples2bytes(au->av, num_written);
-	}
-	if (au->frame_samples == 0) {
-		/* We need to decode some new frames! */
-		err = audio_av_decode(au->av,
-				      &(au->frame_ptr),
-				      &(au->frame_samples));
 	}
 	au->last_err = err;
 	return err;
