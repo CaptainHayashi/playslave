@@ -12,7 +12,7 @@
 *.dylib
 
 # Executables
-main
+playslave
 *.exe
 *.out
 *.app

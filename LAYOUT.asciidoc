@@ -1,4 +1,4 @@
-Layout of the +playslave+ source code distribution
+Layout of the playslave source code distribution
 ==================================================
 Matt Windsor <matt.windsor@ury.org.uk>
 v1.0, 26th December 2012:
@@ -19,14 +19,15 @@ This is in the root directory of the distribution.
 +COPYING+:: The GNU General Public License, version 2.
 +LAYOUT.asciidoc+:: This file.
 +LICENSE.portaudio+:: The PortAudio license, used by the +pa_xyz+ code
-                      in +/src/contrib+.
+                      in +/contrib+.
 +PROTOCOL.asciidoc+:: Overview of the +playslave+ protocol.
 +README.asciidoc+:: Overview of +playslave+ and its usage.
++STYLE.asciidoc+:: Style guidelines.
 
 Source code
 -----------
 
-The project source code is in the +/src+ directory.
+The project source code is in the root directory (for now, at least).
 
 [horizontal]
 +audio.c+:: Mid-level audio subsystem
@@ -50,7 +51,7 @@ providing exports of their public functions as well as the occasional
 Contributed source code
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-+/contrib/+ contains source code that was not written by the authors
++/contrib+ contains source code that was not written by the authors
 of +playslave+ but is embedded into the +playslave+ source code.
 
 [horizontal]
@@ -61,10 +62,12 @@ of +playslave+ but is embedded into the +playslave+ source code.
 Tool files
 ----------
 
-These are in the root directory of the distribution.
+These are in the root directory of the distribution unless otherwise
+noted.
 
 [horizontal]
 +Makefile+:: POSIX-style Makefile
 +.gitignore+:: Git ignore file
 +.indent.pro+:: Configuration for BSD indent (may work with other indents)
 +.splintrc+:: Configuration for splint (may or may not be useful)
++lintcmd.sh+:: Slightly hacky BSD lint wrapper, probably useless

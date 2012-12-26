@@ -1,12 +1,15 @@
 .POSIX:
 
+################################################################################
+# Makefile for playslave
+
 # Programs
 CC?=		clang
 TOUCH=		touch
 RM=		rm
 
 # Target
-PROG=		main
+PROG=		playslave
 WARNS?=		-Wall -Wextra -Werror -pedantic
 
 PKGS=		libavformat1 libavcodec1 portaudio-2.0

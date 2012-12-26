@@ -1,0 +1,11 @@
+Authors
+=======
+playslave Contributors
+v1.0, 26th December 2012:
+Initial version.
+
+This is a list of significant contributors to +playslave+.  For a more
+detailed overview, check the comments at the top of each source file.
+
+* Matt Windsor <matt.windsor@ury.org.uk>, URY Computing Team
+* PortAudio contributors

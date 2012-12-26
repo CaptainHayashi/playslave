@@ -1,0 +1,96 @@
+Style guidelines
+================
+Matt Windsor <matt.windsor@ury.org.uk>
+v1.0, 26th December 2012:
+Initial version.
+
+Here are some guidelines as to coding style for +playslave+ for new
+contributors or maintainers.
+
+Overarching concerns
+--------------------
+
+* Keep things simple.
+* Keep things as portable as POSIX and the playback libraries allow.
+* Don't add features unless they're needed upstream.
+* Don't make optimisations unless +playslave+ runs too slowly in practice.
+
+Indent style
+------------
+
++playslave+ uses the default FreeBSD +indent+ style religiously; the
+file +.indent.pro+ in the source tree contains this style as well as
+some typedefs.
+
+It's strongly recommended that you run the source through BSD indent
+whenever possible, to make sure everything is nice and consistent.
+Note that GNU indent enforces its own GNU style by default, and
+doesn't seem to like the BSD +.indent.pro+; the first person to come
+up with a GNU indent invocation that does the job wins cupcakes.
+
+Where possible and applicable, follow FreeBSD's +style(9)+ guidelines.
+As these are _kernel_ style guidelines, they don't apply much to
++playslave+, but are still worth following where they make sense.
+
+Why is this the indent style?  Because +playslave+ originated on a
+FreeBSD machine and FreeBSD +indent+ was handy.  If enough people
+think it's a bad style (tabs are very contentious!) then change might
+happen.
+
+When in doubt, follow the existing code.  When in severe doubt, fetch
+someone with a copy of FreeBSD +indent+.
+
+Formatting
+----------
+
+When in Rome, do as the Romans do.
+
+The comments seen at the top of headers and code files are
+modifications of the templates in c.vim, and should generally be
+emulated in new code, as should the separators that separate out areas
+of code (also pinched from c.vim, albeit heavily restyled).
+
+The order of dividers for header files is:
+
+1. INCLUDES
+2. MACROS
+3. TYPEDEFS
+4. DATA TYPES
+5. CONSTANTS
+6. FUNCTIONS
+
+And, for C files:
+
+1. INCLUDES
+2. MACROS
+3. TYPEDEFS
+4. DATA TYPES
+5. GLOBAL VARIABLES
+6. STATIC PROTOTYPES
+7. PUBLIC FUNCTIONS
+8. STATIC FUNCTIONS
+
+These can be removed if not needed.
+
+Comments
+--------
+
+Currently we don't use doxygen or any other automatic documentation
+generation tool, so function comments are informal and generally omit
+things that can be inferred by common sense.
+
+That being said, anything that _can't_ be inferred by common sense
+_should_ be commented.
+
+This might change later.
+
+Language extensions
+-------------------
+
+Keep things within the boundaries of C99 and POSIX.1-2008.
+
+Do *not* use GNU-specific compiler extensions.
+
+Likewise, do *not* use platform-specific library extensions except
+where covered by POSIX.  This includes BSD and glibc library
+extensions (things like +asprintf+, FreeBSD's queue macros, etc.)
