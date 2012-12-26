@@ -1,12 +1,12 @@
 /*
  * =============================================================================
  *
- *       Filename:  cmd.h
+ *       Filename:  messages.h
  *
- *    Description:  Interface to command parser
+ *    Description:  Forward declarations of messages.
  *
  *        Version:  1.0
- *        Created:  26/12/2012 04:18:45
+ *        Created:  26/12/2012 01:34:44
  *       Revision:  none
  *       Compiler:  clang
  *
@@ -34,16 +34,24 @@
  * Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef CMD_H
-#define CMD_H
+#ifndef MESSAGES_H
+#define MESSAGES_H
 
-/**  INCLUDES  ****************************************************************/
+/**  CONSTANTS  ***************************************************************/
 
-#include "errors.h"		/* enum error */
-#include "player.h"		/* struct player */
+/* All of these are defined in messages.c.
+ *
+ * HOUSEKEEPING: Keep these and their messages.c counterparts in ASCIIbetical
+ * order if possible?
+ */
 
-/**  FUNCTIONS  ***************************************************************/
+const char     *MSG_CMD_ARGN;	/* Nullary command got an argument */
+const char     *MSG_CMD_ARGU;	/* Unary command got no arguments */
+const char     *MSG_CMD_NOSUCH;	/* No command with the given word */
+const char     *MSG_CMD_NOWORD;	/* No command word given */
+const char     *MSG_ERR_NOMEM;	/* For when the error routine runs out of mem */
+const char     *MSG_NO_DEVICE;	/* No device ID given */
+const char     *MSG_OHAI;	/* Greeting message */
+const char     *MSG_TTFN;	/* Parting message */
 
-enum error	check_commands(struct player *pl);
-
-#endif				/* not CMD_H */
+#endif				/* not MESSAGES_H  */

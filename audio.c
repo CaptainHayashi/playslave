@@ -86,7 +86,7 @@ audio_load(struct audio **au,
 	enum error	err = E_OK;
 
 	if (*au != NULL) {
-		debug(0, "Audio structure exists, freeing");
+		dbug("Audio structure exists, freeing");
 		audio_unload(*au);
 	}
 	*au = calloc((size_t)1, sizeof(struct audio));
@@ -114,7 +114,7 @@ audio_unload(struct audio *au)
 		if (au->out_strm != NULL) {
 			Pa_CloseStream(au->out_strm);
 			au->out_strm = NULL;
-			debug(0, "closed output stream");
+			dbug("closed output stream");
 		}
 		free(au);
 	}
@@ -137,7 +137,7 @@ audio_start(struct audio *au)
 			err = error(E_INTERNAL_ERROR, "couldn't start stream");
 	}
 	if (err == E_OK)
-		debug(0, "audio started");
+		dbug("audio started");
 
 	return err;
 }
@@ -152,7 +152,7 @@ audio_stop(struct audio *au)
 	if (pa_err)
 		err = error(E_INTERNAL_ERROR, "couldn't stop stream");
 	else
-		debug(0, "audio stopped");
+		dbug("audio stopped");
 
 	/* TODO: Possibly recover from dropping frames due to abort. */
 	return err;
@@ -392,11 +392,11 @@ free_ring_buf(struct audio *au)
 	enum error	err = E_OK;
 
 	if (au->ring_buf != NULL) {
-		debug(0, "freeing existing ringbuf");
+		dbug("freeing existing ringbuf");
 		free(au->ring_buf);
 	}
 	if (au->ring_data != NULL) {
-		debug(0, "freeing existing ringbuf data buffer");
+		dbug("freeing existing ringbuf data buffer");
 		free(au->ring_data);
 	}
 	return err;

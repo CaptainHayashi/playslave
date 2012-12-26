@@ -88,7 +88,7 @@ audio_av_load(struct au_in **av, const char *path)
 	enum error	err = E_OK;
 
 	if (*av != NULL) {
-		debug(0, "au_in structure exists, freeing");
+		dbug("au_in structure exists, freeing");
 		audio_av_unload(*av);
 	}
 	*av = calloc((size_t)1, sizeof(struct au_in));
@@ -108,8 +108,8 @@ audio_av_load(struct au_in **av, const char *path)
 	if (err == E_OK)
 		err = au_init_frame(*av);
 	if (err == E_OK) {
-		debug(0, "stream id: %u", (*av)->stream_id);
-		debug(0, "codec: %s", (*av)->stream->codec->codec->long_name);
+		dbug("stream id: %u", (*av)->stream_id);
+		dbug("codec: %s", (*av)->stream->codec->codec->long_name);
 	}
 	return err;
 }
@@ -120,7 +120,7 @@ audio_av_unload(struct au_in *av)
 	if (av != NULL) {
 		avcodec_free_frame(&(av->frame));
 		if (av->packet != NULL) {
-			debug(0, "freeing packet...");
+			dbug("freeing packet...");
 			av_free_packet(av->packet);
 			free(av->packet);
 		}
@@ -128,12 +128,12 @@ audio_av_unload(struct au_in *av)
 		if (av->context != NULL) {
 			avformat_close_input(&(av->context));
 			av->context = NULL;
-			debug(0, "closed input file");
+			dbug("closed input file");
 		}
 		if (av->buffer != NULL) {
 			free(av->buffer);
 			av->buffer = NULL;
-			debug(0, "closed decode buffer");
+			dbug("closed decode buffer");
 		}
 	}
 }

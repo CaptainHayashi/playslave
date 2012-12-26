@@ -1,12 +1,12 @@
 /*
  * =============================================================================
  *
- *       Filename:  cmd.h
+ *       Filename:  messages.c
  *
- *    Description:  Interface to command parser
+ *    Description:  Messages.  (Does exactly what it says on the tin...)
  *
  *        Version:  1.0
- *        Created:  26/12/2012 04:18:45
+ *        Created:  26/12/2012 01:36:25
  *       Revision:  none
  *       Compiler:  clang
  *
@@ -34,16 +34,14 @@
  * Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef CMD_H
-#define CMD_H
 
-/**  INCLUDES  ****************************************************************/
+/**  GLOBAL VARIABLES  ********************************************************/
 
-#include "errors.h"		/* enum error */
-#include "player.h"		/* struct player */
-
-/**  FUNCTIONS  ***************************************************************/
-
-enum error	check_commands(struct player *pl);
-
-#endif				/* not CMD_H */
+const char     *MSG_CMD_ARGN = "Expecting no argument, got one";
+const char     *MSG_CMD_ARGU = "Expecting an argument, didn't get one";
+const char     *MSG_CMD_NOSUCH = "Command not recognised";
+const char     *MSG_CMD_NOWORD = "Need at least a command word";
+const char     *MSG_ERR_NOMEM = "(ran out of memory to write error!)";
+const char     *MSG_NO_DEVICE = "Expected a device ID as an argument";
+const char     *MSG_OHAI = "URY playslave at your service";
+const char     *MSG_TTFN = "Sleep now";

@@ -94,7 +94,7 @@ audio_cb_play(const void *in,
 				 * decoding to go through. In other words,
 				 * this is a buffer underflow.
 				 */
-				debug(0, "buffer underflow");
+				dbug("buffer underflow");
 				/* Break out of the loop inelegantly */
 				memset(cout,
 						0,

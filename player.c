@@ -80,7 +80,8 @@ enum state	GEND = VOID;
 
 /**  STATIC PROTOTYPES  *******************************************************/
 
-enum error	gate_state(struct player *play, enum state s1,...);
+static enum error gate_state(struct player *play, enum state s1,...);
+static void	set_state(struct player *play, enum state state);
 
 /**  PUBLIC FUNCTIONS  ********************************************************/
 
@@ -129,10 +130,8 @@ player_ejct(struct player *play)
 			audio_unload(play->au);
 			play->au = NULL;
 		}
-		play->cstate = EJECTED;
+		set_state(play, EJECTED);
 		play->ptime = 0;
-
-		debug(0, "player ejected");
 	}
 	/* Ejecting while ejected is harmlessly ignored */
 
@@ -148,7 +147,7 @@ player_play(struct player *play)
 	if (err == E_OK)
 		err = audio_start(play->au);
 	if (err == E_OK)
-		play->cstate = PLAYING;
+		set_state(play, PLAYING);
 
 	return err;
 }
@@ -159,7 +158,7 @@ player_quit(struct player *play)
 	enum error	err;
 
 	err = player_ejct(play);
-	play->cstate = QUITTING;
+	set_state(play, QUITTING);
 
 	return err;
 }
@@ -173,7 +172,7 @@ player_stop(struct player *play)
 	if (err == E_OK)
 		err = audio_stop(play->au);
 	if (err == E_OK)
-		play->cstate = STOPPED;
+		set_state(play, STOPPED);
 
 	return err;
 }
@@ -191,8 +190,8 @@ player_load(struct player *play, const char *filename)
 	if (err)
 		player_ejct(play);
 	else {
-		debug(0, "loaded %s", filename);
-		play->cstate = STOPPED;
+		dbug("loaded %s", filename);
+		set_state(play, STOPPED);
 	}
 
 	return err;
@@ -203,8 +202,10 @@ player_seek(struct player *play, const char *time_str)
 {
 	uint64_t	time;
 	char           *end;
+	enum state	state;
 	enum error	err = E_OK;
-	enum state	state = play->cstate;
+
+	state = player_state(play);
 
 	/* TODO: proper overflow checking */
 
@@ -231,6 +232,7 @@ player_seek(struct player *play, const char *time_str)
 
 	return err;
 }
+
 /*----------------------------------------------------------------------------
  *  Miscellaneous
  *----------------------------------------------------------------------------*/
@@ -244,9 +246,10 @@ player_update(struct player *pl)
 		if (audio_halted(pl->au)) {
 			err = player_ejct(pl);
 		} else {
+			/* Send a time pulse upstream every TIME_USECS usecs */
 			uint64_t	time = audio_usec(pl->au);
 			if (time / TIME_USECS > pl->ptime / TIME_USECS) {
-				debug(0, "TIME %u", time);
+				response(R_TIME, "%u", time);
 			}
 			pl->ptime = time;
 
@@ -264,7 +267,12 @@ player_state(struct player *play)
 
 /**  STATIC FUNCTIONS  ********************************************************/
 
-enum error
+/* Throws an error if the current state is not in the state set provided by
+ * argument s1 and subsequent arguments up to 'GEND'.
+ *
+ * As a variadic function, the argument list MUST be terminated with 'GEND'.
+ */
+static enum error
 gate_state(struct player *play, enum state s1,...)
 {
 	va_list		ap;
@@ -281,7 +289,7 @@ gate_state(struct player *play, enum state s1,...)
 	*snptr = '\0';
 
 	va_start(ap, s1);
-	for (i = (int)s1; i != (int)VOID; i = va_arg(ap, int)) {
+	for (i = (int)s1; i != (int)GEND; i = va_arg(ap, int)) {
 		if ((int)state == i) {
 			in_state = true;
 			break;
@@ -302,4 +310,15 @@ gate_state(struct player *play, enum state s1,...)
 			    STATE_NAMES[state], state_names);
 
 	return err;
+}
+
+/* Sets the player state and honks accordingly. */
+static void
+set_state(struct player *play, enum state state)
+{
+	enum state pstate = play->cstate;
+
+	play->cstate = state;
+
+	response(R_STAT, "%s %s", STATE_NAMES[pstate], STATE_NAMES[state]);
 }
