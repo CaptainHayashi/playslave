@@ -172,7 +172,7 @@ handle_command(struct player *play)
 			gotcmd = try_unary(play, buffer, argument, &err);
 		if (!gotcmd)
 			err = error(E_BAD_COMMAND, "%s", MSG_CMD_NOSUCH);
-		else
+		if (err == E_OK)
 			response(R_OKAY, "%s", buffer);
 	}
 	dbug("command processed");

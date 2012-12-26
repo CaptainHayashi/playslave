@@ -1,0 +1,70 @@
+Layout of the +playslave+ source code distribution
+==================================================
+Matt Windsor <matt.windsor@ury.org.uk>
+v1.0, 26th December 2012:
+Initial version.
+
+This file contains information about the other files in the
++playslave+ source distribution.  It may be out of date with respect
+to the current state of the distribution, but should be kept
+up-to-date where possible.
+
+Documentation
+-------------
+
+This is in the root directory of the distribution.
+
+[horizontal]
++AUTHORS.asciidoc+:: Names of contributors to +playslave+.
++COPYING+:: The GNU General Public License, version 2.
++LAYOUT.asciidoc+:: This file.
++LICENSE.portaudio+:: The PortAudio license, used by the +pa_xyz+ code
+                      in +/src/contrib+.
++PROTOCOL.asciidoc+:: Overview of the +playslave+ protocol.
++README.asciidoc+:: Overview of +playslave+ and its usage.
+
+Source code
+-----------
+
+The project source code is in the +/src+ directory.
+
+[horizontal]
++audio.c+:: Mid-level audio subsystem
++audio_av.c+:: FFmpeg/libavcodec/libavformat specific code
++audio_cb.c+:: The PortAudio playout callback
++cmd.c+:: The command processor
++constants.c+:: Miscellaneous numerical constants
++errors.c+:: Error reporting
++io.c+:: Common input/output routines
++main.c+:: The main entry point and loop
++messages.c+:: Messages used in the program
++player.c+:: The high-level player state machine
+
+Headers
+~~~~~~~
+
+Usually the +.c+ files referred to above have corresponding +.h+ files
+providing exports of their public functions as well as the occasional
++enum+ declaration.  Any additional headers will be described below.
+
+Contributed source code
+~~~~~~~~~~~~~~~~~~~~~~~
+
++/contrib/+ contains source code that was not written by the authors
+of +playslave+ but is embedded into the +playslave+ source code.
+
+[horizontal]
++pa_memorybarrier.h+:: Part of the ringbuffer code used in +audio.c+.
++pa_ringbuffer.h+:: As above.
++pa_ringbuffer.c+:: As above.
+
+Tool files
+----------
+
+These are in the root directory of the distribution.
+
+[horizontal]
++Makefile+:: POSIX-style Makefile
++.gitignore+:: Git ignore file
++.indent.pro+:: Configuration for BSD indent (may work with other indents)
++.splintrc+:: Configuration for splint (may or may not be useful)
