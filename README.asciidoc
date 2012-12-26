@@ -1,8 +1,5 @@
 playslave
 =========
-Matt Windsor <matt.windsor@ury.org.uk>
-v1.0, 26th December 2012:
-Initial version.
 
 +playslave+ is an attempt at making a small audio playback wrapper on top of
 _ffmpeg_ and _portaudio_ that can be controlled through stdout and stdin with a
@@ -10,7 +7,7 @@ simple protocol.
 
 It might end up being the bottom rung of a playback system someday.  Who knows.
 
-It is written in C99 against POSIX.1-2008, and should compile on any recent
+It is written in C99 against POSIX.1-2008, and should compile on any recent 
 nix-like.
 
 Usage
@@ -53,5 +50,5 @@ version 2.  See +COPYING+ for details.
 _ffmpeg_ and _portaudio_ are used by +playslave+; they are also available under
 the terms of the GPLv2 and MIT licences respectively.
 
-Parts of _portaudio_ are included in +/src/contrib+; the _portaudio_
-license is available in +LICENSE.portaudio+.
+Parts of _portaudio_ are included in +/src/contrib+; the _portaudio_ license
+is available in +LICENSE.portaudio+.
