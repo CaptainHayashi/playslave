@@ -1,7 +1,7 @@
 playslave
-=========
+---------
 
-+playslave+ is an attempt at making a small audio playback wrapper on top of
++playslave+ is an attempt at making a small audio playback wrapper on top of 
 _ffmpeg_ and _portaudio_ that can be controlled through stdout and stdin with a
 simple protocol.
 
@@ -11,7 +11,7 @@ It is written in C99 against POSIX.1-2008, and should compile on any recent
 nix-like.
 
 Usage
------
+~~~~~
 
 More functionality to be added when needed.
 
@@ -28,21 +28,21 @@ More functionality to be added when needed.
   number will be taken as seconds.
 
 Known issues
-------------
+~~~~~~~~~~~~
 
 - STOPping currently drops a frame or two on resumption
 - SEEKing too far throws an internal error
 - No real use as of yet
 
 Acknowledgments
----------------
+~~~~~~~~~~~~~~~
 
-A lot of the audio bits of this were salvaged from example code, most notably
+A lot of the audio bits of this were salvaged from example code, most notably 
 http://blinkingblip.wordpress.com/2011/10/08/decoding-and-playing-an-audio-stream-using-libavcodec-libavformat-and-libao/
 and some other sources.
 
 Licence
--------
+~~~~~~~
 
 +playslave+ is distributed under the terms of the GNU General Public License,
 version 2.  See +COPYING+ for details.
