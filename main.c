@@ -100,6 +100,11 @@ device_id(PaDeviceIndex *device, int argc, char *argv[])
 	enum error	err = E_OK;
 
 	num_devices = Pa_GetDeviceCount();
+	/*
+	 * Possible Improvement: This is rather dodgy code for getting the
+	 * device ID out of the command line arguments, maybe make it a bit
+	 * more robust.
+	 */
 	if (argc < 2) {
 		int		i;
 		const PaDeviceInfo *dev;

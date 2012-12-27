@@ -121,6 +121,7 @@ vresponse(enum response code, const char *format, va_list ap)
 		vfprintf(stderr, format, ap2);
 		fprintf(stderr, "\n");
 	}
+
 	return code;
 }
 

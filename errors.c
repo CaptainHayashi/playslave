@@ -136,25 +136,26 @@ error(enum error code, const char *format,...)
 	/*
 	 * Problem: adding the error name into the format without changing
 	 * the format string dynamically (a bad idea).
-	 * 
+	 *
 	 * Our strategy: render the error into a temporary buffer using magicks,
 	 * then send it to response.
 	 */
 
-	/* Try printing the error into a null buffer to get required length
+	/*
+	 * Try printing the error into a null buffer to get required length
 	 * (see http://stackoverflow.com/questions/4899221)
 	 */
 	buflen = vsnprintf(NULL, 0, format, ap);
 	buf = calloc(buflen + 1, sizeof(char));
-	if (buf == NULL)
-		buf = (char *)MSG_ERR_NOMEM;
-	else
+	if (buf != NULL)
 		vsnprintf(buf, buflen + 1, format, ap2);
 
-	response(BLAME_RESPONSE[ERROR_BLAME[code]], "%s %s", emsg, buf);
+	response(BLAME_RESPONSE[ERROR_BLAME[code]], "%s %s",
+		 emsg,
+		 buf == NULL ? MSG_ERR_NOMEM : buf);
 	va_end(ap);
 
-	if (buf != (char *)MSG_ERR_NOMEM)
+	if (buf != NULL)
 		free(buf);
 
 	return code;
