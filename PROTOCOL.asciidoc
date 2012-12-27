@@ -218,7 +218,7 @@ The following responses are sent by +playslave+:
     _old_ to the state named by _new_.  The client *SHOULD* update its
     user interface accordingly.
 +TIME+ _timestamp_::
-    If +playslave+ is *Play*, this is (its estimate of) the current
+    If +playslave+ is in *Play*, this is (its estimate of) the current
     position in the song, in microseconds.  The client *SHOULD NOT*
     expect this to be accurate beyond roughly 0.1 seconds precision.
 +DBUG+ _message_::
