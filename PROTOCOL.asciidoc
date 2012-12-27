@@ -98,7 +98,7 @@ following list of commands:
     playing audio.  The position in the current file *MUST NOT* be lost, but
     a few samples *MAY* be dropped.
 +
-.Example of +stop+ when *Play*
+.Example of +stop+ when in *Play*
 ================================================================================
     --> stop
     <-- STAT Play Stop
@@ -117,14 +117,14 @@ following list of commands:
     audio file *MUST* be destroyed.  Ejecting whilst in *Ejct* *MAY*
     produce an illegal state error.
 +
-.Example of +ejct+ when *Play*
+.Example of +ejct+ when in *Play*
 ================================================================================
     --> ejct
     <-- STAT Play Ejct
     <-- OKAY ejct
 ================================================================================
 +
-.Example of +ejct+ when *Stop*
+.Example of +ejct+ when in *Stop*
 ================================================================================
     --> ejct
     <-- STAT Stop Ejct
