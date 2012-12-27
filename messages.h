@@ -49,8 +49,9 @@ const char     *MSG_CMD_ARGN;	/* Nullary command got an argument */
 const char     *MSG_CMD_ARGU;	/* Unary command got no arguments */
 const char     *MSG_CMD_NOSUCH;	/* No command with the given word */
 const char     *MSG_CMD_NOWORD;	/* No command word given */
+const char     *MSG_DEV_BADID;  /* Incorrect device ID given */ 
+const char     *MSG_DEV_NOID;	/* No device ID given */
 const char     *MSG_ERR_NOMEM;	/* For when the error routine runs out of mem */
-const char     *MSG_NO_DEVICE;	/* No device ID given */
 const char     *MSG_OHAI;	/* Greeting message */
 const char     *MSG_TTFN;	/* Parting message */
 

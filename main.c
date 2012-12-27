@@ -53,7 +53,7 @@
 
 /**  STATIC PROTOTYPES  *******************************************************/
 
-static enum error get_driver_id(int *driver, int argc, char *argv[]);
+static enum error device_id(PaDeviceIndex *device, int argc, char *argv[]);
 static void	main_loop(struct player *play);
 
 /**  PUBLIC FUNCTIONS  ********************************************************/
@@ -63,7 +63,7 @@ int
 main(int argc, char *argv[])
 {
 	/* TODO: cleanup */
-	int		driver;
+	PaDeviceIndex	device;
 	int		exit_code;
 	enum error	err = E_OK;
 	struct player  *context = NULL;
@@ -71,10 +71,10 @@ main(int argc, char *argv[])
 	if (Pa_Initialize() != (int)paNoError)
 		err = error(E_AUDIO_INIT_FAIL, "couldn't init portaudio");
 	if (err == E_OK)
-		err = get_driver_id(&driver, argc, argv);
+		err = device_id(&device, argc, argv);
 	if (err == E_OK) {
 		av_register_all();
-		err = player_init(&context, driver);
+		err = player_init(&context, device);
 	}
 	if (err == E_OK)
 		err = player_ejct(context);
@@ -92,9 +92,9 @@ main(int argc, char *argv[])
 
 /**  STATIC FUNCTIONS  ********************************************************/
 
-/* Tries to parse the driver ID. */
+/* Tries to parse the device ID. */
 static enum error
-get_driver_id(int *driver, int argc, char *argv[])
+device_id(PaDeviceIndex *device, int argc, char *argv[])
 {
 	int		num_devices;
 	enum error	err = E_OK;
@@ -104,7 +104,7 @@ get_driver_id(int *driver, int argc, char *argv[])
 		int		i;
 		const PaDeviceInfo *dev;
 
-		err = error(E_BAD_CONFIG, MSG_NO_DEVICE);
+		err = error(E_BAD_CONFIG, MSG_DEV_NOID);
 
 		/* Print out the available devices */
 		for (i = 0; i < num_devices; i++) {
@@ -112,8 +112,9 @@ get_driver_id(int *driver, int argc, char *argv[])
 			dbug("%u: %s", i, dev->name);
 		}
 	} else {
-		*driver = (int)strtol(argv[1], NULL, 10);
-		/* TODO: check */
+		*device = (int)strtoul(argv[1], NULL, 10);
+		if (*device >= num_devices)
+			err = error(E_BAD_CONFIG, MSG_DEV_BADID);
 	}
 
 	return err;

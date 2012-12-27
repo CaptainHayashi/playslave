@@ -49,6 +49,13 @@
 #include "io.h"
 #include "player.h"
 
+/**  MACROS  ******************************************************************/
+
+/* This should be long enough to hold all the state names above separated with
+ * spaces and null-terminated.
+ */
+#define STATE_NAME_BUF 256
+
 /**  DATA TYPES  **************************************************************/
 
 struct player {
@@ -70,11 +77,6 @@ const char     *STATE_NAMES[NUM_STATES] = {
 	"PLAYING",
 	"QUITTING",
 };
-
-/* This should be long enough to hold all the state names above separated with
- * spaces and null-terminated.
- */
-const size_t	STATE_NAME_BUF = 256;
 
 enum state	GEND = VOID;
 
@@ -316,7 +318,7 @@ gate_state(struct player *play, enum state s1,...)
 static void
 set_state(struct player *play, enum state state)
 {
-	enum state pstate = play->cstate;
+	enum state	pstate = play->cstate;
 
 	play->cstate = state;
 

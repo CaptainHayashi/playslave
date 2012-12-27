@@ -12,7 +12,13 @@ RM=		rm
 PROG=		playslave
 WARNS?=		-Wall -Wextra -Werror -pedantic
 
-PKGS=		libavformat libavcodec portaudio-2.0
+# These are overridable because they will inevitably differ from
+# system to system.  So much for portability...
+AVFORMAT_PKG?=	libavformat1
+AVCODEC_PKG?=	libavcodec1
+PORTAUDIO_PKG?=	portaudio-2.0
+PKGS=		$(PORTAUDIO_PKG) $(AVCODEC_PKG) $(AVFORMAT_PKG)
+
 CFLAGS+=	-g --std=gnu99 `pkg-config --cflags $(PKGS)`
 LIBS=		`pkg-config --libs $(PKGS)`
 

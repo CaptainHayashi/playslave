@@ -77,14 +77,14 @@ static enum error
 setup_pa(PaSampleFormat sf, int device,
 	 int chans, PaStreamParameters *pars);
 
+/* Plaster over the lack of avcodec_free_frame in older ffmpeg
+ * (see below in statics for implementation)
+ */
 #if LIBAVCODEC_VERSION_MAJOR < 55
-# if LIBAVCODEC_VERSION_MAJOR < 54 || LIBAVCODEC_VERSION_MAJOR > 27
-
-/* Plaster over the lack of avcodec_free_frame */
+# if LIBAVCODEC_VERSION_MAJOR < 54 || LIBAVCODEC_VERSION_MAJOR < 28
 #  define MOCK_AVCODEC_FREE_FRAME
 static void avcodec_free_frame(AVFrame **frame);
-
-# endif /* LIBAVCODEC_VERSION_MAJOR > 54 || LIBAVCODEC_VERSION_MAJOR > 27 */
+# endif /* LIBAVCODEC_VERSION_MAJOR > 54 || LIBAVCODEC_VERSION_MAJOR < 28 */
 #endif /* LIBAVCODEC_VERSION_MAJOR < 55 */
 
 /**  PUBLIC FUNCTIONS  ********************************************************/
