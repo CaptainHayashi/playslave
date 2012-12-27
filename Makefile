@@ -12,8 +12,8 @@ RM=		rm
 PROG=		playslave
 WARNS?=		-Wall -Wextra -Werror -pedantic
 
-PKGS=		libavformat1 libavcodec1 portaudio-2.0
-CFLAGS+=	-g --std=c99 `pkg-config --cflags $(PKGS)`
+PKGS=		libavformat libavcodec portaudio-2.0
+CFLAGS+=	-g --std=gnu99 `pkg-config --cflags $(PKGS)`
 LIBS=		`pkg-config --libs $(PKGS)`
 
 OBJS=		main.o

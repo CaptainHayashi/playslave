@@ -149,11 +149,11 @@ handle_command(struct player *play)
 	if (err == E_OK) {
 		/* Find start of argument(s) */
 		size_t		i;
-		ssize_t		j;
+		size_t		j;
 		bool		gotcmd = false;
 
 		for (i = WORD_LEN - 1; i < length && argument == NULL; i++) {
-			if (!isspace(buffer[i])) {
+			if (!isspace((int)buffer[i])) {
 				/* Assume this is where the arg is */
 				argument = buffer + i;
 				break;
@@ -164,7 +164,7 @@ handle_command(struct player *play)
 		 * Strip any whitespace out of the argument (by setting it to
 		 * the null character, thus null-terminating the argument)
 		 */
-		for (j = length - 1; isspace(buffer[j]); i--)
+		for (j = length - 1; isspace((int)buffer[j]); i--)
 			buffer[j] = '\0';
 
 		gotcmd = try_nullary(play, buffer, argument, &err);

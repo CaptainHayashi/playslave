@@ -57,7 +57,7 @@ struct audio {
 	struct au_in   *av;	/* ffmpeg state */
 	/* shared state */
 	char           *frame_ptr;
-	unsigned long	frame_samples;
+	size_t		frame_samples;
 	/* PortAudio state */
 	PaUtilRingBuffer *ring_buf;
 	char           *ring_data;
@@ -326,7 +326,7 @@ init_sink(struct audio *au, int device)
 {
 	PaError		pa_err;
 	double		sample_rate;
-	unsigned long	samples_per_buf;
+	size_t		samples_per_buf;
 	PaStreamParameters pars;
 	enum error	err = E_OK;
 

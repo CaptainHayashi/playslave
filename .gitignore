@@ -19,6 +19,7 @@ playslave
 
 # Core dumps
 *.core
+*.stackdump
 
 # Backups
 *.BAK
@@ -31,6 +32,11 @@ playslave
 
 # CTAGS
 tags
+
+# Windows/Dev-C++ crap
+*.dev
+*.layout
+*.Win
 
 # AsciiDoc renderings
 *.html

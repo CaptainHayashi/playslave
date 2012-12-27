@@ -43,6 +43,7 @@
 
 /* ffmpeg */
 #include <libavcodec/avcodec.h>
+#include <libavcodec/version.h>		/* For old version patchups */
 #include <libavformat/avformat.h>
 
 #include <portaudio.h>
@@ -75,6 +76,16 @@ static enum error conv_sample_fmt(enum AVSampleFormat in, PaSampleFormat *out);
 static enum error
 setup_pa(PaSampleFormat sf, int device,
 	 int chans, PaStreamParameters *pars);
+
+#if LIBAVCODEC_VERSION_MAJOR < 55
+# if LIBAVCODEC_VERSION_MAJOR < 54 || LIBAVCODEC_VERSION_MAJOR > 27
+
+/* Plaster over the lack of avcodec_free_frame */
+#  define MOCK_AVCODEC_FREE_FRAME
+static void avcodec_free_frame(AVFrame **frame);
+
+# endif /* LIBAVCODEC_VERSION_MAJOR > 54 || LIBAVCODEC_VERSION_MAJOR > 27 */
+#endif /* LIBAVCODEC_VERSION_MAJOR < 55 */
 
 /**  PUBLIC FUNCTIONS  ********************************************************/
 
@@ -118,6 +129,7 @@ void
 audio_av_unload(struct au_in *av)
 {
 	if (av != NULL) {
+		dbug("freeing frame...");
 		avcodec_free_frame(&(av->frame));
 		if (av->packet != NULL) {
 			dbug("freeing packet...");
@@ -432,3 +444,15 @@ decode_packet(struct au_in *av, char **buf, size_t *n)
 	}
 	return err;
 }
+
+#ifdef MOCK_AVCODEC_FREE_FRAME
+
+/* Quick and dirty patch for old versions of ffmpeg that mocks up
+ * avcodec_free_frame; may cause memory leaks in some cases...
+ */
+static void avcodec_free_frame(AVFrame **frame) 
+{
+	av_free(*frame);
+	*frame = NULL;
+}
+#endif /* MOCK_AVCODEC_FREE_FRAME */
