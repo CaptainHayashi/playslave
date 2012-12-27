@@ -219,7 +219,8 @@ audio_samples2bytes(struct audio *au, size_t samples)
  *  Spin-up
  *----------------------------------------------------------------------------*/
 
-/* Tries to fill the audio buffer by decoding as much as can fit into it.
+/* Tries to place enough audio into the audio buffer to prevent a
+ * buffer underrun during a player start.
  *
  * If end of file is reached, it is ignored and converted to E_OK so that it can
  * later be caught by the player callback once it runs out of sound.
@@ -231,8 +232,13 @@ audio_spin_up(struct audio *au)
 	enum error	err;
 	PaUtilRingBuffer *r = au->ring_buf;
 
+        /* Either fill the ringbuf or hit the maximum spin-up size,
+         * whichever happens first.  (There's a maximum in order to
+         * prevent spin-up from taking massive amounts of time and
+         * thus delaying playback.)
+         */
 	for (err = E_OK, c = PaUtil_GetRingBufferWriteAvailable(r);
-	     err == E_OK && c > 0;
+	     err == E_OK && (c > 0 && RINGBUF_SIZE - c < SPINUP_SIZE);
 	     err = audio_decode(au), c = PaUtil_GetRingBufferWriteAvailable(r));
 
 	/* Allow EOF, this'll be caught by the player callback once it hits the
