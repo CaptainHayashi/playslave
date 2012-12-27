@@ -114,7 +114,7 @@ following list of commands:
 +ejct+::
     If in the *Play* or *Stop* state, cease playing any audio
     and unload the current file.  All state pertaining to the old
-    audio file *MUST* be destroyed.  Ejecting whilst *Ejct* *MAY*
+    audio file *MUST* be destroyed.  Ejecting whilst in *Ejct* *MAY*
     produce an illegal state error.
 +
 .Example of +ejct+ when *Play*
