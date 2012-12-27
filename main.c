@@ -135,7 +135,7 @@ main_loop(struct player *pl)
 	t.tv_nsec = LOOP_NSECS;
 
 	response(R_OHAI, "%s", MSG_OHAI);	/* Say hello */
-	while (player_state(pl) != QUITTING) {
+	while (player_state(pl) != S_QUIT) {
 		/*
 		 * Possible Improvement: separate command checking and player
 		 * updating into two threads.  Player updating is quite

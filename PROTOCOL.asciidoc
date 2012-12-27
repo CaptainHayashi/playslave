@@ -13,19 +13,23 @@ State
 +playslave+ operates as a finite state machine whereby commands are
 only applicable in certain states and may change the current state.
 
+State names are four characters long and always in title-case.  Where
+possible, they line up with the commands used to induce them: for
+example, +ejct+ is the command to put +playslave+ in +Ejct+.
+
 State changes are announced via the +STAT+ response in which the
 content is first the name of the previous state and then the name of
 the new state, separated by _one_ space.
 
 +playslave+ has the following externally visible states:
 
-+EJECTED+::
-    No file is loaded.  This is the initial state.
-+STOPPED+::
++Ejct+::
+    No file is loaded (Ejct stands for ``ejected'').  This is the initial state.
++Stop+::
     A file is loaded, but playback is currently stopped.
-+PLAYING+::
++Play+::
     A file is loaded and presently playing.
-+QUITTING+::
++Quit+::
     The +playslave+ system is about to quit.  The +TTFN+ response
     *MUST* be sent by the system before the system quits.
 
@@ -33,20 +37,20 @@ the new state, separated by _one_ space.
 --------------------------------------------------------------------------------
 digraph G
 {
-    EJECTED -> STOPPED [label="load"];
-    PLAYING -> STOPPED [label="stop"];
+    Ejct -> Stop [label="load"];
+    Play -> Stop [label="stop"];
 
-    STOPPED -> PLAYING [label="play"];
+    Stop -> Play [label="play"];
 
-    STOPPED -> EJECTED [label="ejct"];
-    PLAYING -> EJECTED [label="ejct"];
-    PLAYING -> EJECTED [label="(end of file)"];
-    PLAYING -> EJECTED [label="(decoding error)"];
-    PLAYING -> EJECTED [label="(load failure)"];
+    Stop -> Ejct [label="ejct"];
+    Play -> Ejct [label="ejct"];
+    Play -> Ejct [label="(end of file)"];
+    Play -> Ejct [label="(decoding error)"];
+    Play -> Ejct [label="(load failure)"];
 
-    EJECTED -> QUITTING [label="quit"];
-    STOPPED -> QUITTING [label="quit"];
-    PLAYING -> QUITTING [label="quit"];
+    Ejct -> Quit [label="quit"];
+    Stop -> Quit [label="quit"];
+    Play -> Quit [label="quit"];
 }
 --------------------------------------------------------------------------------
 
@@ -72,13 +76,13 @@ following list of commands:
 
 +load+ _file_::
     Loads _file_, where _file_ is an unescaped path to a valid audio
-    file.  If successful, the state will change to *STOPPED*.
+    file.  If successful, the state will change to *Stop*.
 +
 .Example of +load+
 ================================================================================
     <-- OHAI URY playslave at your service
     --> load /usr/home/mattbw/Music/calif.mp3
-    <-- STAT EJECTED STOPPED
+    <-- STAT Ejct Stop
     <-- OKAY load /usr/home/mattbw/Music/calif.mp3
 ================================================================================
 +
@@ -90,40 +94,40 @@ following list of commands:
 ================================================================================
 
 +stop+::
-    If in the *PLAYING* state, switch to the *STOPPED* state and cease
+    If in the *Play* state, switch to the *Stop* state and cease
     playing audio.  The position in the current file *MUST NOT* be lost, but
     a few samples *MAY* be dropped.
 +
-.Example of +stop+ when *PLAYING*
+.Example of +stop+ when *Play*
 ================================================================================
     --> stop
-    <-- STAT PLAYING STOPPED
+    <-- STAT Play Stop
     <-- OKAY stop
 ================================================================================
 +
 .Example of +stop+ in an illegal state
 ================================================================================
     --> stop
-    <-- WHAT BAD_STATE STOPPED not in { PLAYING }
+    <-- WHAT BAD_STATE Stop not in { Play }
 ================================================================================
 
 +ejct+::
-    If in the *PLAYING* or *STOPPED* state, cease playing any audio
+    If in the *Play* or *Stop* state, cease playing any audio
     and unload the current file.  All state pertaining to the old
-    audio file *MUST* be destroyed.  Ejecting whilst *EJECTED* *MAY*
+    audio file *MUST* be destroyed.  Ejecting whilst *Ejct* *MAY*
     produce an illegal state error.
 +
-.Example of +ejct+ when *PLAYING*
+.Example of +ejct+ when *Play*
 ================================================================================
     --> ejct
-    <-- STAT PLAYING EJECTED
+    <-- STAT Play Ejct
     <-- OKAY ejct
 ================================================================================
 +
-.Example of +ejct+ when *STOPPED*
+.Example of +ejct+ when *Stop*
 ================================================================================
     --> ejct
-    <-- STAT STOPPED EJECTED
+    <-- STAT Stop Ejct
     <-- OKAY ejct
 ================================================================================
 
@@ -135,20 +139,20 @@ following list of commands:
 .Example of +quit+
 ================================================================================
     --> quit
-    <-- STAT EJECTED QUITTING
+    <-- STAT Ejct Quit
     <-- OKAY quit
     <-- TTFN Sleep now
 ================================================================================
 
 +seek+ _position_::
-    If in *STOPPED* or *PLAYING* state, seeks to the absolute position in the 
+    If in *Stop* or *Play* state, seeks to the absolute position in the 
     loaded audio specified by _position_ and continues as the current
     state dictates.
     If _position_ ends in +s+ or +sec+, the position is taken as
     seconds from the start of the audio; otherwise it is taken as
     microseconds.
-    +seek+ *MAY* temporarily switch states from *PLAYING* to *STOPPED*
-    and back if the original state was *STOPPED*.  Clients *MUST*
+    +seek+ *MAY* temporarily switch states from *Play* to *Stop*
+    and back if the original state was *Stop*.  Clients *MUST*
     ignore these state changes until an +OKAY+ or error response is
     caught.
 +
@@ -156,8 +160,8 @@ following list of commands:
 ================================================================================
     <-- TIME 3065034
     --> SEEK 10s
-    <-- STAT PLAYING STOPPED
-    <-- STAT STOPPED PLAYING
+    <-- STAT Play Stop
+    <-- STAT Stop Play
     <-- OKAY seek 10s
     <-- TIME 10092879
 ================================================================================
@@ -171,7 +175,7 @@ following list of commands:
 .Example of +seek+ whilst in an illegal state
 ================================================================================
     --> seek 10s
-    <-- WHAT BAD_STATE EJECTED not in { PLAYING STOPPED }
+    <-- WHAT BAD_STATE Ejct not in { Play Stop }
 ================================================================================
 
 
@@ -202,7 +206,7 @@ The following responses are sent by +playslave+:
     that it believes to be its own fault.  usually this is
     highlighting a bug or deficiency in the +playslave+ interpretation.
 +OHAI+ _message_::
-    +playslave+ has just started and is in *EJECTED* state, ready to
+    +playslave+ has just started and is in *Ejct* state, ready to
     receive commands.  clients *SHOULD NOT* send commands to a newly
     spawned +playslave+ until receiving an +OHAI+ response.
     Usually _message_ is implementation dependent.
@@ -214,7 +218,7 @@ The following responses are sent by +playslave+:
     _old_ to the state named by _new_.  The client *SHOULD* update its
     user interface accordingly.
 +TIME+ _timestamp_::
-    If +playslave+ is *PLAYING*, this is (its estimate of) the current
+    If +playslave+ is *Play*, this is (its estimate of) the current
     position in the song, in microseconds.  The client *SHOULD NOT*
     expect this to be accurate beyond roughly 0.1 seconds precision.
 +DBUG+ _message_::

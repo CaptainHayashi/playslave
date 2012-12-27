@@ -56,12 +56,13 @@ struct player;
  * represented by an instance of 'enum state'.
  */
 enum state {
-	VOID,			/* No state (usually when player starts up) */
-	EJECTED,		/* No file loaded */
-	STOPPED,		/* File loaded but not playing */
-	PLAYING,		/* File loaded and playing */
-	QUITTING,		/* Player about to quit */
-	NUM_STATES
+	S_VOID,			/* No state (usually when player starts up) */
+	S_EJCT, 		/* No file loaded */
+	S_STOP, 		/* File loaded but not playing */
+	S_PLAY, 		/* File loaded and playing */
+	S_QUIT, 		/* Player about to quit */
+        /*--------------------------------------------------------------------*/
+	NUM_STATES              /* Number of items in enum */
 };
 
 /**  FUNCTIONS  ***************************************************************/

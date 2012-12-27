@@ -70,15 +70,15 @@ struct player {
 /**  GLOBAL VARIABLES  ********************************************************/
 
 /* Names of the states in enum state. */
-const char     *STATE_NAMES[NUM_STATES] = {
-	"VOID",
-	"EJECTED",
-	"STOPPED",
-	"PLAYING",
-	"QUITTING",
+const char     STATES[NUM_STATES][WORD_LEN] = {
+	"Void",
+	"Ejct",
+	"Stop",
+	"Play",
+	"Quit",
 };
 
-enum state	GEND = VOID;
+enum state	GEND = S_VOID;
 
 /**  STATIC PROTOTYPES  *******************************************************/
 
@@ -103,7 +103,7 @@ player_init(struct player **play, int device)
 		}
 	}
 	if (err == E_OK) {
-		(*play)->cstate = EJECTED;
+		(*play)->cstate = S_EJCT;
 		(*play)->device = device;
 	}
 	return err;
@@ -126,13 +126,13 @@ player_ejct(struct player *play)
 {
 	enum error	err;
 
-	err = gate_state(play, STOPPED, PLAYING, EJECTED, GEND);
-	if (err == E_OK && player_state(play) != EJECTED) {
+	err = gate_state(play, S_STOP, S_PLAY, S_EJCT, GEND);
+	if (err == E_OK && player_state(play) != S_EJCT) {
 		if (play->au != NULL) {
 			audio_unload(play->au);
 			play->au = NULL;
 		}
-		set_state(play, EJECTED);
+		set_state(play, S_EJCT);
 		play->ptime = 0;
 	}
 	/* Ejecting while ejected is harmlessly ignored */
@@ -145,11 +145,11 @@ player_play(struct player *play)
 {
 	enum error	err;
 
-	err = gate_state(play, STOPPED, GEND);
+	err = gate_state(play, S_STOP, GEND);
 	if (err == E_OK)
 		err = audio_start(play->au);
 	if (err == E_OK)
-		set_state(play, PLAYING);
+		set_state(play, S_PLAY);
 
 	return err;
 }
@@ -160,7 +160,7 @@ player_quit(struct player *play)
 	enum error	err;
 
 	err = player_ejct(play);
-	set_state(play, QUITTING);
+	set_state(play, S_QUIT);
 
 	return err;
 }
@@ -170,11 +170,11 @@ player_stop(struct player *play)
 {
 	enum error	err;
 
-	err = gate_state(play, PLAYING, GEND);
+	err = gate_state(play, S_PLAY, GEND);
 	if (err == E_OK)
 		err = audio_stop(play->au);
 	if (err == E_OK)
-		set_state(play, STOPPED);
+		set_state(play, S_STOP);
 
 	return err;
 }
@@ -193,7 +193,7 @@ player_load(struct player *play, const char *filename)
 		player_ejct(play);
 	else {
 		dbug("loaded %s", filename);
-		set_state(play, STOPPED);
+		set_state(play, S_STOP);
 	}
 
 	return err;
@@ -222,14 +222,14 @@ player_seek(struct player *play, const char *time_str)
 
 	/* Weed out any unwanted states */
 	if (err == E_OK)
-		err = gate_state(play, PLAYING, STOPPED, GEND);
+		err = gate_state(play, S_PLAY, S_STOP, GEND);
 	/* We need the player engine stopped in order to seek */
-	if (err == E_OK && state == PLAYING)
+	if (err == E_OK && state == S_PLAY)
 		err = player_stop(play);
 	if (err == E_OK)
 		err = audio_seek_usec(play->au, time);
 	/* If we were playing before we'd ideally like to resume */
-	if (err == E_OK && state == PLAYING)
+	if (err == E_OK && state == S_PLAY)
 		err = player_play(play);
 
 	return err;
@@ -245,7 +245,7 @@ player_update(struct player *pl)
 {
 	enum error	err = E_OK;
 
-	if (pl->cstate == PLAYING) {
+	if (pl->cstate == S_PLAY) {
 		if (audio_halted(pl->au)) {
 			err = player_ejct(pl);
 		} else {
@@ -257,7 +257,7 @@ player_update(struct player *pl)
 			pl->ptime = time;
                 }
         }
-        if (err == E_OK && (pl->cstate == PLAYING || pl->cstate == STOPPED))
+        if (err == E_OK && (pl->cstate == S_PLAY || pl->cstate == S_STOP))
                 err = audio_decode(pl->au);
 	return err;
 }
@@ -300,7 +300,7 @@ gate_state(struct player *play, enum state s1,...)
 				sep,
 				STATE_NAME_BUF - (snptr - state_names));
 			strncat(snptr,
-				STATE_NAMES[i],
+				STATES[i],
 				STATE_NAME_BUF - (snptr - state_names));
 		}
 	}
@@ -309,7 +309,7 @@ gate_state(struct player *play, enum state s1,...)
 	if (!in_state)
 		err = error(E_BAD_STATE,
 			    "%s not in {%s }",
-			    STATE_NAMES[state], state_names);
+			    STATES[state], state_names);
 
 	return err;
 }
@@ -322,5 +322,5 @@ set_state(struct player *play, enum state state)
 
 	play->cstate = state;
 
-	response(R_STAT, "%s %s", STATE_NAMES[pstate], STATE_NAMES[state]);
+	response(R_STAT, "%s %s", STATES[pstate], STATES[state]);
 }
