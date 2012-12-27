@@ -239,6 +239,7 @@ player_seek(struct player *play, const char *time_str)
  *  Miscellaneous
  *----------------------------------------------------------------------------*/
 
+/* Does some work on the player (decoding,  */
 enum error
 player_update(struct player *pl)
 {
@@ -254,10 +255,10 @@ player_update(struct player *pl)
 				response(R_TIME, "%u", time);
 			}
 			pl->ptime = time;
-
-			err = audio_decode(pl->au);
-		}
-	}
+                }
+        }
+        if (err == E_OK && (pl->cstate == PLAYING || pl->cstate == STOPPED))
+                err = audio_decode(pl->au);
 	return err;
 }
 
