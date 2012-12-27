@@ -19,7 +19,12 @@ AVCODEC_PKG?=	libavcodec1
 PORTAUDIO_PKG?=	portaudio-2.0
 PKGS=		$(PORTAUDIO_PKG) $(AVCODEC_PKG) $(AVFORMAT_PKG)
 
-CFLAGS+=	-g --std=gnu99 `pkg-config --cflags $(PKGS)`
+# Usually we want to work on the c99 standard, but some targets hide
+# some POSIX library functions unless gnu99 is set, so we let this be
+# changed on the command line too.
+STD?=		c99
+
+CFLAGS+=	-g --std=$(STD) `pkg-config --cflags $(PKGS)`
 LIBS=		`pkg-config --libs $(PKGS)`
 
 OBJS=		main.o

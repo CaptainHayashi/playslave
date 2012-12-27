@@ -292,11 +292,10 @@ gate_state(struct player *play, enum state s1,...)
 	*snptr = '\0';
 
 	va_start(ap, s1);
-	for (i = (int)s1; i != (int)GEND; i = va_arg(ap, int)) {
-		if ((int)state == i) {
+	for (i = (int)s1; !in_state && i != (int)GEND; i = va_arg(ap, int)) {
+		if ((int)state == i)
 			in_state = true;
-			break;
-		} else {
+		else {
 			strncat(snptr,
 				sep,
 				STATE_NAME_BUF - (snptr - state_names));
