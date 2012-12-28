@@ -39,11 +39,44 @@
 
 /**  INCLUDES  ****************************************************************/
 
+#include "constants.h"		/* WORD_LEN */
 #include "errors.h"		/* enum error */
 #include "player.h"		/* struct player */
+
+/**  MACROS  ******************************************************************/
+
+/* Helper macros for defining commands */
+#define NCMD(word, func) {word, C_NULLARY, {.ncmd = func}}
+#define UCMD(word, func) {word, C_UNARY, {.ucmd = func}}
+#define END_CMDS {"XXXX", C_END_OF_LIST, {.ignore = '\0'}}
+
+/**  TYPEDEFS  ****************************************************************/
+
+typedef enum error (*nullary_cmd_ptr) (void *usr);
+typedef enum error (*unary_cmd_ptr) (void *usr, const char *arg);
+
+/**  DATA TYPES  **************************************************************/
+
+/* Type of command, used for the tagged union in struct cmd. */
+enum cmd_type {
+	C_NULLARY,		/* Command accepts no arguments */
+	C_UNARY,		/* Command accepts one argument */
+        C_END_OF_LIST           /* Sentinel for end of command list */
+};
+
+/* Command structure */
+struct cmd {
+	const char	word[WORD_LEN];	/* Command word */
+	enum cmd_type	function_type;	/* Tag for function union */
+	union {
+		nullary_cmd_ptr	ncmd;	/* No-argument command */
+		unary_cmd_ptr	ucmd;	/* One-argument command */
+                char            ignore; /* Use with C_END_OF_LIST */
+	}		function;	/* Function pointer to actual command */
+};
 
 /**  FUNCTIONS  ***************************************************************/
 
 enum error	check_commands(struct player *pl);
 
-#endif				/* not CMD_H */
+#endif				/* !CMD_H */

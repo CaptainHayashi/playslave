@@ -76,8 +76,6 @@ main(int argc, char *argv[])
 		av_register_all();
 		err = player_init(&context, device);
 	}
-	if (err == E_OK)
-		err = player_ejct(context);
 	if (err == E_OK) {
 		main_loop(context);
 		Pa_Terminate();

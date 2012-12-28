@@ -76,16 +76,16 @@ void		player_free(struct player *pl);	/* Deallocates a player. */
 /*----------------------------------------------------------------------------
  * Nullary commands
  *----------------------------------------------------------------------------*/
-enum error	player_ejct(struct player *pl);	/* Ejects current song. */
-enum error	player_play(struct player *pl);	/* Plays song. */
-enum error	player_quit(struct player *pl);	/* Closes player. */
-enum error	player_stop(struct player *pl);	/* Stops song. */
+enum error	player_cmd_ejct(void *v_play);	/* Ejects current song. */
+enum error	player_cmd_play(void *v_play);	/* Plays song. */
+enum error	player_cmd_quit(void *v_play);	/* Closes player. */
+enum error	player_cmd_stop(void *v_play);	/* Stops song. */
 
 /*----------------------------------------------------------------------------
  * Unary commands
  *----------------------------------------------------------------------------*/
-enum error	player_load(struct player *pl, const char *path);
-enum error	player_seek(struct player *pl, const char *time_str);
+enum error	player_cmd_load(void *v_play, const char *path);
+enum error	player_cmd_seek(void *v_play, const char *time_str);
 
 /*----------------------------------------------------------------------------
  * Miscellaneous

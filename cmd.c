@@ -45,73 +45,31 @@
 #include <string.h>
 
 #include "constants.h"		/* WORD_LEN */
+#include "cmd.h"		/* struct cmd, enum cmd_type */
 #include "errors.h"		/* error */
 #include "io.h"			/* response */
 #include "messages.h"		/* Messages (usually errors) */
 #include "player.h"		/* This is where the commands live */
 
-/**  TYPEDEFS  ****************************************************************/
-
-typedef enum error (*nullary_cmd_ptr) (struct player *);
-typedef enum error (*unary_cmd_ptr) (struct player *, const char *);
-
-/**  DATA TYPES  **************************************************************/
-
-/* Commands */
-enum nullary_cmd {
-	CMD_PLAY,		/* Plays the currently LOADed file */
-	CMD_STOP,		/* Stops the currently PLAYing file */
-	CMD_EJECT,		/* Ejects the currently LOADed file */
-	CMD_QUIT,		/* Closes the player */
-	NUM_NULLARY_CMDS,
-	NULLARY_CMDS_START = 0
-};
-
-enum unary_cmd {
-	CMD_LOAD,		/* Loads a file into the EJECTed player */
-	CMD_SEEK,		/* Seeks somewhere in a PLAYing file */
-	NUM_UNARY_CMDS,
-	UNARY_CMDS_START = 0
-};
-
 /**  GLOBAL VARIABLES  ********************************************************/
 
-/* Command words - these must all be WORD_LEN long */
-static const char NULLARY_WORDS[NUM_NULLARY_CMDS][WORD_LEN] = {
-	"play",			/* CMD_PLAY */
-	"stop",			/* CMD_STOP */
-	"ejct",			/* CMD_EJECT */
-	"quit",			/* CMD_QUIT */
-};
-
-static const char UNARY_WORDS[NUM_UNARY_CMDS][WORD_LEN] = {
-	"load",			/* CMD_LOAD */
-	"seek",			/* CMD_SEEK */
-};
-
-static nullary_cmd_ptr NULLARY_FUNCS[NUM_NULLARY_CMDS] = {
-	player_play,		/* CMD_PLAY */
-	player_stop,		/* CMD_STOP */
-	player_ejct,		/* CMD_EJECT */
-	player_quit,		/* CMD_QUIT */
-};
-
-static unary_cmd_ptr UNARY_FUNCS[NUM_UNARY_CMDS] = {
-	player_load,		/* CMD_LOAD */
-	player_seek		/* CMD_SEEK */
+static struct cmd commands[] = {
+	/* Nullary commands */
+	NCMD("play", player_cmd_play),
+	NCMD("stop", player_cmd_stop),
+	NCMD("ejct", player_cmd_ejct),
+	NCMD("quit", player_cmd_quit),
+	/* Unary commands */
+	UCMD("load", player_cmd_load),
+	UCMD("seek", player_cmd_seek),
+	END_CMDS
 };
 
 /**  STATIC PROTOTYPES  *******************************************************/
 
 static enum error handle_command(struct player *play);
-
-static bool
-try_nullary(struct player *play,
-	    const char *buf, const char *arg, enum error *err);
-
-static bool
-try_unary(struct player *play,
-	  const char *buf, const char *arg, enum error *err);
+static enum error exec_cmd(void *usr, const char *word, const char *arg);
+static enum error exec_cmd_struct(void *usr, struct cmd *cmd, const char *arg);
 
 /**  PUBLIC FUNCTIONS  ********************************************************/
 
@@ -150,7 +108,6 @@ handle_command(struct player *play)
 		/* Find start of argument(s) */
 		size_t		i;
 		size_t		j;
-		bool		gotcmd = false;
 
 		for (i = WORD_LEN - 1; i < length && argument == NULL; i++) {
 			if (!isspace((int)buffer[i])) {
@@ -167,11 +124,7 @@ handle_command(struct player *play)
 		for (j = length - 1; isspace((int)buffer[j]); i--)
 			buffer[j] = '\0';
 
-		gotcmd = try_nullary(play, buffer, argument, &err);
-		if (!gotcmd)
-			gotcmd = try_unary(play, buffer, argument, &err);
-		if (!gotcmd)
-			err = error(E_BAD_COMMAND, "%s", MSG_CMD_NOSUCH);
+		err = exec_cmd((void *)play, buffer, argument);
 		if (err == E_OK)
 			response(R_OKAY, "%s", buffer);
 	}
@@ -181,49 +134,50 @@ handle_command(struct player *play)
 	return err;
 }
 
-static bool
-try_nullary(struct player *play,
-	    const char *buf,
-	    const char *arg, enum error *err)
+static enum error
+exec_cmd(void *usr, const char *word, const char *arg)
 {
-	int		n;
-	bool		gotcmd = false;
+	bool		gotcmd;
+	struct cmd     *cmd;
+	enum error	err = E_OK;
 
-	for (n = (int)NULLARY_CMDS_START;
-	     n < (int)NUM_NULLARY_CMDS && !gotcmd;
-	     n += 1) {
-		if (strncmp(NULLARY_WORDS[n], buf, WORD_LEN - 1) == 0) {
+	for (cmd = &commands[0], gotcmd = false;
+	     cmd->function_type != C_END_OF_LIST && !gotcmd;
+	     cmd++) {
+		if (strncmp(cmd->word, word, WORD_LEN - 1) == 0) {
 			gotcmd = true;
-			if (arg == NULL)
-				*err = NULLARY_FUNCS[n] (play);
-			else
-				*err = error(E_BAD_COMMAND, "%s", MSG_CMD_ARGN);
+			err = exec_cmd_struct(usr, cmd, arg);
 		}
 	}
 
-	return gotcmd;
+	if (!gotcmd)
+		err = error(E_BAD_COMMAND, "%s", MSG_CMD_NOSUCH);
+
+	return err;
 }
 
-static bool
-try_unary(struct player *play,
-	  const char *buf,
-	  const char *arg,
-	  enum error *err)
+static enum error
+exec_cmd_struct(void *usr, struct cmd *cmd, const char *arg)
 {
-	int		u;
-	bool		gotcmd = false;
+	enum error	err = E_OK;
 
-	for (u = (int)UNARY_CMDS_START;
-	     u < (int)NUM_UNARY_CMDS && !gotcmd;
-	     u += 1) {
-		if (strncmp(UNARY_WORDS[u], buf, WORD_LEN - 1) == 0) {
-			gotcmd = true;
-			if (arg != NULL)
-				*err = UNARY_FUNCS[u] (play, arg);
-			else
-				*err = error(E_BAD_COMMAND, "%s", MSG_CMD_ARGU);
-		}
+	switch (cmd->function_type) {
+	case C_NULLARY:
+		if (arg == NULL)
+			err = cmd->function.ncmd(usr);
+		else
+			err = error(E_BAD_COMMAND, "%s", MSG_CMD_ARGN);
+		break;
+	case C_UNARY:
+		if (arg == NULL)
+			err = error(E_BAD_COMMAND, "%s", MSG_CMD_ARGU);
+		else
+			err = cmd->function.ucmd(usr, arg);
+		break;
+	case C_END_OF_LIST:
+		err = error(E_INTERNAL_ERROR, "%s", MSG_CMD_HITEND);
+		break;
 	}
 
-	return gotcmd;
+	return err;
 }

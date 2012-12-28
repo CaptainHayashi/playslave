@@ -122,9 +122,10 @@ player_free(struct player *play)
  *----------------------------------------------------------------------------*/
 
 enum error
-player_ejct(struct player *play)
+player_cmd_ejct(void *v_play)
 {
 	enum error	err;
+        struct player   *play = (struct player*)v_play;
 
 	err = gate_state(play, S_STOP, S_PLAY, S_EJCT, GEND);
 	if (err == E_OK && player_state(play) != S_EJCT) {
@@ -141,9 +142,10 @@ player_ejct(struct player *play)
 }
 
 enum error
-player_play(struct player *play)
+player_cmd_play(void *v_play)
 {
 	enum error	err;
+        struct player   *play = (struct player*)v_play;
 
 	err = gate_state(play, S_STOP, GEND);
 	if (err == E_OK)
@@ -155,20 +157,22 @@ player_play(struct player *play)
 }
 
 enum error
-player_quit(struct player *play)
+player_cmd_quit(void *v_play)
 {
 	enum error	err;
+        struct player   *play = (struct player*)v_play;
 
-	err = player_ejct(play);
+	err = player_cmd_ejct(v_play);
 	set_state(play, S_QUIT);
 
 	return err;
 }
 
 enum error
-player_stop(struct player *play)
+player_cmd_stop(void *v_play)
 {
 	enum error	err;
+        struct player   *play = (struct player*)v_play;
 
 	err = gate_state(play, S_PLAY, GEND);
 	if (err == E_OK)
@@ -184,13 +188,14 @@ player_stop(struct player *play)
  *----------------------------------------------------------------------------*/
 
 enum error
-player_load(struct player *play, const char *filename)
+player_cmd_load(void *v_play, const char *filename)
 {
 	enum error	err;
+        struct player   *play = (struct player*)v_play;
 
 	err = audio_load(&(play->au), filename, play->device);
 	if (err)
-		player_ejct(play);
+		player_cmd_ejct(v_play);
 	else {
 		dbug("loaded %s", filename);
 		set_state(play, S_STOP);
@@ -200,12 +205,13 @@ player_load(struct player *play, const char *filename)
 }
 
 enum error
-player_seek(struct player *play, const char *time_str)
+player_cmd_seek(void *v_play, const char *time_str)
 {
 	uint64_t	time;
 	char           *end;
 	enum state	state;
 	enum error	err = E_OK;
+        struct player   *play = (struct player*)v_play;
 
 	state = player_state(play);
 
@@ -225,12 +231,12 @@ player_seek(struct player *play, const char *time_str)
 		err = gate_state(play, S_PLAY, S_STOP, GEND);
 	/* We need the player engine stopped in order to seek */
 	if (err == E_OK && state == S_PLAY)
-		err = player_stop(play);
+		err = player_cmd_stop(v_play);
 	if (err == E_OK)
 		err = audio_seek_usec(play->au, time);
 	/* If we were playing before we'd ideally like to resume */
 	if (err == E_OK && state == S_PLAY)
-		err = player_play(play);
+		err = player_cmd_play(v_play);
 
 	return err;
 }
@@ -247,7 +253,7 @@ player_update(struct player *pl)
 
 	if (pl->cstate == S_PLAY) {
 		if (audio_halted(pl->au)) {
-			err = player_ejct(pl);
+			err = player_cmd_ejct((void *)pl);
 		} else {
 			/* Send a time pulse upstream every TIME_USECS usecs */
 			uint64_t	time = audio_usec(pl->au);

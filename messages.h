@@ -47,6 +47,7 @@
 
 const char     *MSG_CMD_ARGN;	/* Nullary command got an argument */
 const char     *MSG_CMD_ARGU;	/* Unary command got no arguments */
+const char     *MSG_CMD_HITEND; /* Accidentally reached end of commands list */
 const char     *MSG_CMD_NOSUCH;	/* No command with the given word */
 const char     *MSG_CMD_NOWORD;	/* No command word given */
 const char     *MSG_DEV_BADID;  /* Incorrect device ID given */ 

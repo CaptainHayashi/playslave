@@ -39,6 +39,7 @@
 
 const char     *MSG_CMD_ARGN = "Expecting no argument, got one";
 const char     *MSG_CMD_ARGU = "Expecting an argument, didn't get one";
+const char     *MSG_CMD_HITEND = "Hit end of commands list without stopping";
 const char     *MSG_CMD_NOSUCH = "Command not recognised";
 const char     *MSG_CMD_NOWORD = "Need at least a command word";
 const char     *MSG_DEV_BADID = "Incorrect device ID";
