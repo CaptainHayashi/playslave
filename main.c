@@ -54,7 +54,6 @@
 /**  STATIC PROTOTYPES  *******************************************************/
 
 static enum error device_id(PaDeviceIndex *device, int argc, char *argv[]);
-static void	main_loop(struct player *play);
 
 /**  PUBLIC FUNCTIONS  ********************************************************/
 
@@ -77,7 +76,7 @@ main(int argc, char *argv[])
 		err = player_init(&context, device);
 	}
 	if (err == E_OK) {
-		main_loop(context);
+		err = player_main_loop(context);
 		Pa_Terminate();
 	}
 	if (err == E_OK)
@@ -121,28 +120,4 @@ device_id(PaDeviceIndex *device, int argc, char *argv[])
 	}
 
 	return err;
-}
-
-/* The main loop of the program. */
-static void
-main_loop(struct player *pl)
-{
-	struct timespec	t;
-
-	t.tv_sec = 0;
-	t.tv_nsec = LOOP_NSECS;
-
-	response(R_OHAI, "%s", MSG_OHAI);	/* Say hello */
-	while (player_state(pl) != S_QUIT) {
-		/*
-		 * Possible Improvement: separate command checking and player
-		 * updating into two threads.  Player updating is quite
-		 * intensive and thus impairs the command checking latency.
-		 * Do this if it doesn't make the code too complex.
-		 */
-		check_commands(pl);
-		player_update(pl);
-		nanosleep(&t, NULL);
-	}
-	response(R_TTFN, "%s", MSG_TTFN);	/* Wave goodbye */
 }

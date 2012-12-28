@@ -53,44 +53,47 @@
 
 /**  GLOBAL VARIABLES  ********************************************************/
 
-static struct cmd commands[] = {
-	/* Nullary commands */
-	NCMD("play", player_cmd_play),
-	NCMD("stop", player_cmd_stop),
-	NCMD("ejct", player_cmd_ejct),
-	NCMD("quit", player_cmd_quit),
-	/* Unary commands */
-	UCMD("load", player_cmd_load),
-	UCMD("seek", player_cmd_seek),
-	END_CMDS
-};
+
 
 /**  STATIC PROTOTYPES  *******************************************************/
 
-static enum error handle_command(struct player *play);
-static enum error exec_cmd(void *usr, const char *word, const char *arg);
-static enum error exec_cmd_struct(void *usr, struct cmd *cmd, const char *arg);
+static enum error handle_cmd(void *usr, const struct cmd *cmds);
+static enum error
+exec_cmd(void *usr,
+	 const struct cmd *cmds,
+	 const char *word,
+	 const char *arg);
+static enum error 
+exec_cmd_struct(void *usr,
+		const struct cmd *cmd,
+		const char *arg);
 
 /**  PUBLIC FUNCTIONS  ********************************************************/
 
 /*
- * Checks to see if there are any commands waiting on stdio and, if there
- * are, deals with them by running them on the given player.
+ * Checks to see if there is a commands waiting on stdio and, if there
+ * is, sends it to the command handler.
+ *
+ * 'usr' is a pointer to any user data that should be passed to
+ * executed commands; 'cmds' is a pointer to an END_CMDS-terminated
+ * array of command definitions (see cmd.h for details).
  */
 enum error
-check_commands(struct player *play)
+check_commands(void *usr, const struct cmd *cmds)
 {
 	enum error	err = E_OK;
+
 	if (input_waiting())
-		err = handle_command(play);
+		err = handle_cmd(usr, cmds);
 
 	return err;
 }
 
 /**  STATIC FUNCTIONS  ********************************************************/
 
+/* Processes the command currently waiting at standard input. */
 static enum error
-handle_command(struct player *play)
+handle_cmd(void *usr, const struct cmd *cmds)
 {
 	size_t		length;
 	enum error	err = E_OK;
@@ -124,7 +127,7 @@ handle_command(struct player *play)
 		for (j = length - 1; isspace((int)buffer[j]); i--)
 			buffer[j] = '\0';
 
-		err = exec_cmd((void *)play, buffer, argument);
+		err = exec_cmd(usr, cmds, buffer, argument);
 		if (err == E_OK)
 			response(R_OKAY, "%s", buffer);
 	}
@@ -135,13 +138,13 @@ handle_command(struct player *play)
 }
 
 static enum error
-exec_cmd(void *usr, const char *word, const char *arg)
+exec_cmd(void *usr, const struct cmd *cmds, const char *word, const char *arg)
 {
 	bool		gotcmd;
-	struct cmd     *cmd;
+	const struct cmd *cmd;
 	enum error	err = E_OK;
 
-	for (cmd = &commands[0], gotcmd = false;
+	for (cmd = cmds, gotcmd = false;
 	     cmd->function_type != C_END_OF_LIST && !gotcmd;
 	     cmd++) {
 		if (strncmp(cmd->word, word, WORD_LEN - 1) == 0) {
@@ -157,7 +160,7 @@ exec_cmd(void *usr, const char *word, const char *arg)
 }
 
 static enum error
-exec_cmd_struct(void *usr, struct cmd *cmd, const char *arg)
+exec_cmd_struct(void *usr, const struct cmd *cmd, const char *arg)
 {
 	enum error	err = E_OK;
 

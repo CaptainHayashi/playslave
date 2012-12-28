@@ -74,6 +74,11 @@ enum error	player_init(struct player **pl, int driver);
 void		player_free(struct player *pl);	/* Deallocates a player. */
 
 /*----------------------------------------------------------------------------
+ *  Main loop
+ *----------------------------------------------------------------------------*/
+enum error      player_main_loop(struct player *pl);
+
+/*----------------------------------------------------------------------------
  * Nullary commands
  *----------------------------------------------------------------------------*/
 enum error	player_cmd_ejct(void *v_play);	/* Ejects current song. */
@@ -90,7 +95,6 @@ enum error	player_cmd_seek(void *v_play, const char *time_str);
 /*----------------------------------------------------------------------------
  * Miscellaneous
  *----------------------------------------------------------------------------*/
-enum error	player_update(struct player *pl);
 enum state	player_state(struct player *pl);	/* Current state. */
 
 #endif				/* not PLAYER_H */

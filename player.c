@@ -43,10 +43,13 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>               /* struct timespec */
 
 #include "audio.h"
+#include "cmd.h"                /* struct cmd, check_commands */
 #include "constants.h"
 #include "io.h"
+#include "messages.h"
 #include "player.h"
 
 /**  MACROS  ******************************************************************/
@@ -80,10 +83,24 @@ const char     STATES[NUM_STATES][WORD_LEN] = {
 
 enum state	GEND = S_VOID;
 
+/* Set of commands that can be performed on the player. */
+static struct cmd PLAYER_CMDS[] = {
+	/* Nullary commands */
+	NCMD("play", player_cmd_play),
+	NCMD("stop", player_cmd_stop),
+	NCMD("ejct", player_cmd_ejct),
+	NCMD("quit", player_cmd_quit),
+	/* Unary commands */
+	UCMD("load", player_cmd_load),
+	UCMD("seek", player_cmd_seek),
+	END_CMDS
+};
+
 /**  STATIC PROTOTYPES  *******************************************************/
 
 static enum error gate_state(struct player *play, enum state s1,...);
 static void	set_state(struct player *play, enum state state);
+static enum error	player_loop_iter(struct player *pl);
 
 /**  PUBLIC FUNCTIONS  ********************************************************/
 
@@ -115,6 +132,37 @@ player_free(struct player *play)
 	if (play->au)
 		audio_unload(play->au);
 	free(play);
+}
+
+/*----------------------------------------------------------------------------
+ *  Main loop
+ *----------------------------------------------------------------------------*/
+
+enum error
+player_main_loop(struct player *pl)
+{
+    	struct timespec	t;
+        enum error err = E_OK;
+
+	t.tv_sec = 0;
+	t.tv_nsec = LOOP_NSECS;
+
+	response(R_OHAI, "%s", MSG_OHAI);	/* Say hello */
+	while (player_state(pl) != S_QUIT) {
+		/*
+		 * Possible Improvement: separate command checking and player
+		 * updating into two threads.  Player updating is quite
+		 * intensive and thus impairs the command checking latency.
+		 * Do this if it doesn't make the code too complex.
+		 */
+		err = check_commands((void *)pl, PLAYER_CMDS);
+                /* TODO: Check to see if err was fatal */
+		player_loop_iter(pl);
+		nanosleep(&t, NULL);
+	}
+	response(R_TTFN, "%s", MSG_TTFN);	/* Wave goodbye */
+
+        return err;
 }
 
 /*----------------------------------------------------------------------------
@@ -244,10 +292,17 @@ player_cmd_seek(void *v_play, const char *time_str)
 /*----------------------------------------------------------------------------
  *  Miscellaneous
  *----------------------------------------------------------------------------*/
+enum state
+player_state(struct player *play)
+{
+	return play->cstate;
+}
 
-/* Does some work on the player (decoding,  */
+/**  STATIC FUNCTIONS  ********************************************************/
+
+/* Performs an iteration of the player update loop. */
 enum error
-player_update(struct player *pl)
+player_loop_iter(struct player *pl)
 {
 	enum error	err = E_OK;
 
@@ -268,13 +323,6 @@ player_update(struct player *pl)
 	return err;
 }
 
-enum state
-player_state(struct player *play)
-{
-	return play->cstate;
-}
-
-/**  STATIC FUNCTIONS  ********************************************************/
 
 /* Throws an error if the current state is not in the state set provided by
  * argument s1 and subsequent arguments up to 'GEND'.

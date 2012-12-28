@@ -45,7 +45,19 @@
 
 /**  MACROS  ******************************************************************/
 
-/* Helper macros for defining commands */
+/* Helper macros for defining commands.
+ *
+ * Any code defining a set of commands SHOULD use these macros and
+ * MUST terminate with END_CMDS or an equivalent.
+ *
+ * Example:
+ *
+ * struct cmd *foo = {
+ *   NCMD("acme", command_with_no_argument),
+ *   UCMD("ecma", command_with_an_argument),
+ *   END_CMDS
+ * }
+ */
 #define NCMD(word, func) {word, C_NULLARY, {.ncmd = func}}
 #define UCMD(word, func) {word, C_UNARY, {.ucmd = func}}
 #define END_CMDS {"XXXX", C_END_OF_LIST, {.ignore = '\0'}}
@@ -77,6 +89,6 @@ struct cmd {
 
 /**  FUNCTIONS  ***************************************************************/
 
-enum error	check_commands(struct player *pl);
+enum error	check_commands(void *usr, const struct cmd *cmds);
 
 #endif				/* !CMD_H */
