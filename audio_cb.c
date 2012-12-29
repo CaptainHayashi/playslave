@@ -41,10 +41,10 @@
 
 #include <portaudio.h>
 
+#include "cuppa/errors.h"	/* dbug */
 #include "contrib/pa_ringbuffer.h"	/* Ringbuffer */
 
 #include "audio.h"		/* Manipulating the audio structure */
-#include "io.h"			/* debug */
 
 /**  PUBLIC FUNCTIONS  ********************************************************/
 
@@ -97,10 +97,10 @@ audio_cb_play(const void *in,
 				dbug("buffer underflow");
 				/* Break out of the loop inelegantly */
 				memset(cout,
-						0,
-						audio_samples2bytes(au,
-frames_per_buf)
-				      );
+				       0,
+				       audio_samples2bytes(au,
+							   frames_per_buf)
+					);
 				frames_written = frames_per_buf;
 				break;
 			default:

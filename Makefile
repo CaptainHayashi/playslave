@@ -27,9 +27,15 @@ STD?=		c99
 CFLAGS+=	-g --std=$(STD) `pkg-config --cflags $(PKGS)`
 LIBS=		`pkg-config --libs $(PKGS)`
 
-OBJS=		main.o
-OBJS+=		cmd.o constants.o errors.o io.o messages.o player.o 
+# High-level system
+OBJS=		main.o player.o 
+# Constants
+OBJS+=		constants.o messages.o 
+# Audio system
 OBJS+=		audio.o audio_av.o audio_cb.o
+# Code from elsewhere
+OBJS+=		cuppa/cmd.o cuppa/constants.o cuppa/errors.o cuppa/io.o
+OBJS+=		cuppa/messages.o
 OBJS+=		contrib/pa_ringbuffer.o
 
 $(PROG): $(OBJS) 

@@ -43,7 +43,7 @@
 
 #include "contrib/pa_ringbuffer.h"	/* PaUtilRingBuffer */
 
-#include "errors.h"		/* enum error */
+#include "cuppa/errors.h"		/* enum error */
 
 /**  DATA TYPES  **************************************************************/
 

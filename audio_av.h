@@ -45,7 +45,7 @@
 #include <libavformat/avformat.h>
 #include <portaudio.h>		/* PaStreamParameters */
 
-#include "errors.h"		/* enum error */
+#include "cuppa/errors.h"	/* enum error */
 
 /**  DATA TYPES  **************************************************************/
 

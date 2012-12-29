@@ -48,10 +48,11 @@
 
 #include <portaudio.h>
 
+#include "cuppa/errors.h"               /* dbug, error */
+#include "cuppa/constants.h"            /* USECS_IN_SEC */
+
 #include "audio_av.h"
-#include "errors.h"
 #include "constants.h"
-#include "io.h"
 
 /**  DATA TYPES  **************************************************************/
 

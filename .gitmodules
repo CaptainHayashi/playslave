@@ -1,0 +1,3 @@
+[submodule "cuppa"]
+	path = cuppa
+	url = git@github.com:CaptainHayashi/cuppa.git

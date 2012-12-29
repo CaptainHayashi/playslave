@@ -45,9 +45,9 @@
 #include <libavformat/avformat.h>
 #include <portaudio.h>
 
+#include "cuppa/io.h"
+
 #include "constants.h"		/* LOOP_NSECS */
-#include "cmd.h"
-#include "io.h"
 #include "messages.h"		/* MSG_xyz */
 #include "player.h"
 

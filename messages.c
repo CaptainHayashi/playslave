@@ -37,13 +37,7 @@
 
 /**  GLOBAL VARIABLES  ********************************************************/
 
-const char     *MSG_CMD_ARGN = "Expecting no argument, got one";
-const char     *MSG_CMD_ARGU = "Expecting an argument, didn't get one";
-const char     *MSG_CMD_HITEND = "Hit end of commands list without stopping";
-const char     *MSG_CMD_NOSUCH = "Command not recognised";
-const char     *MSG_CMD_NOWORD = "Need at least a command word";
 const char     *MSG_DEV_BADID = "Incorrect device ID";
 const char     *MSG_DEV_NOID = "Expected a device ID as an argument";
-const char     *MSG_ERR_NOMEM = "(ran out of memory to write error!)";
 const char     *MSG_OHAI = "URY playslave at your service";
 const char     *MSG_TTFN = "Sleep now";

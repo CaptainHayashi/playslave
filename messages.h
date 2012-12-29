@@ -41,18 +41,14 @@
 
 /* All of these are defined in messages.c.
  *
+ * NOTE: Some messages are defined in cuppa, see cuppa/messages.[hc].
+ *
  * HOUSEKEEPING: Keep these and their messages.c counterparts in ASCIIbetical
  * order if possible?
  */
 
-const char     *MSG_CMD_ARGN;	/* Nullary command got an argument */
-const char     *MSG_CMD_ARGU;	/* Unary command got no arguments */
-const char     *MSG_CMD_HITEND; /* Accidentally reached end of commands list */
-const char     *MSG_CMD_NOSUCH;	/* No command with the given word */
-const char     *MSG_CMD_NOWORD;	/* No command word given */
 const char     *MSG_DEV_BADID;  /* Incorrect device ID given */ 
 const char     *MSG_DEV_NOID;	/* No device ID given */
-const char     *MSG_ERR_NOMEM;	/* For when the error routine runs out of mem */
 const char     *MSG_OHAI;	/* Greeting message */
 const char     *MSG_TTFN;	/* Parting message */
 

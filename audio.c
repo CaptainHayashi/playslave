@@ -48,7 +48,6 @@
 #include "audio_av.h"
 #include "audio_cb.h"		/* audio_cb_play */
 #include "constants.h"
-#include "io.h"
 
 /**  DATA TYPES  **************************************************************/
 

@@ -43,12 +43,13 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>               /* struct timespec */
+#include <time.h>		/* struct timespec */
+
+#include "cuppa/cmd.h"		/* struct cmd, check_commands */
+#include "cuppa/io.h"           /* response */
 
 #include "audio.h"
-#include "cmd.h"                /* struct cmd, check_commands */
 #include "constants.h"
-#include "io.h"
 #include "messages.h"
 #include "player.h"
 
@@ -73,7 +74,7 @@ struct player {
 /**  GLOBAL VARIABLES  ********************************************************/
 
 /* Names of the states in enum state. */
-const char     STATES[NUM_STATES][WORD_LEN] = {
+const char	STATES[NUM_STATES][WORD_LEN] = {
 	"Void",
 	"Ejct",
 	"Stop",
@@ -100,7 +101,7 @@ static struct cmd PLAYER_CMDS[] = {
 
 static enum error gate_state(struct player *play, enum state s1,...);
 static void	set_state(struct player *play, enum state state);
-static enum error	player_loop_iter(struct player *pl);
+static enum error player_loop_iter(struct player *pl);
 
 /**  PUBLIC FUNCTIONS  ********************************************************/
 
@@ -141,8 +142,8 @@ player_free(struct player *play)
 enum error
 player_main_loop(struct player *pl)
 {
-    	struct timespec	t;
-        enum error err = E_OK;
+	struct timespec	t;
+	enum error	err = E_OK;
 
 	t.tv_sec = 0;
 	t.tv_nsec = LOOP_NSECS;
@@ -156,13 +157,13 @@ player_main_loop(struct player *pl)
 		 * Do this if it doesn't make the code too complex.
 		 */
 		err = check_commands((void *)pl, PLAYER_CMDS);
-                /* TODO: Check to see if err was fatal */
+		/* TODO: Check to see if err was fatal */
 		player_loop_iter(pl);
 		nanosleep(&t, NULL);
 	}
 	response(R_TTFN, "%s", MSG_TTFN);	/* Wave goodbye */
 
-        return err;
+	return err;
 }
 
 /*----------------------------------------------------------------------------
@@ -173,7 +174,7 @@ enum error
 player_cmd_ejct(void *v_play)
 {
 	enum error	err;
-        struct player   *play = (struct player*)v_play;
+	struct player  *play = (struct player *)v_play;
 
 	err = gate_state(play, S_STOP, S_PLAY, S_EJCT, GEND);
 	if (err == E_OK && player_state(play) != S_EJCT) {
@@ -193,7 +194,7 @@ enum error
 player_cmd_play(void *v_play)
 {
 	enum error	err;
-        struct player   *play = (struct player*)v_play;
+	struct player  *play = (struct player *)v_play;
 
 	err = gate_state(play, S_STOP, GEND);
 	if (err == E_OK)
@@ -208,7 +209,7 @@ enum error
 player_cmd_quit(void *v_play)
 {
 	enum error	err;
-        struct player   *play = (struct player*)v_play;
+	struct player  *play = (struct player *)v_play;
 
 	err = player_cmd_ejct(v_play);
 	set_state(play, S_QUIT);
@@ -220,7 +221,7 @@ enum error
 player_cmd_stop(void *v_play)
 {
 	enum error	err;
-        struct player   *play = (struct player*)v_play;
+	struct player  *play = (struct player *)v_play;
 
 	err = gate_state(play, S_PLAY, GEND);
 	if (err == E_OK)
@@ -239,7 +240,7 @@ enum error
 player_cmd_load(void *v_play, const char *filename)
 {
 	enum error	err;
-        struct player   *play = (struct player*)v_play;
+	struct player  *play = (struct player *)v_play;
 
 	err = audio_load(&(play->au), filename, play->device);
 	if (err)
@@ -259,7 +260,7 @@ player_cmd_seek(void *v_play, const char *time_str)
 	char           *end;
 	enum state	state;
 	enum error	err = E_OK;
-        struct player   *play = (struct player*)v_play;
+	struct player  *play = (struct player *)v_play;
 
 	state = player_state(play);
 
@@ -316,10 +317,10 @@ player_loop_iter(struct player *pl)
 				response(R_TIME, "%u", time);
 			}
 			pl->ptime = time;
-                }
-        }
-        if (err == E_OK && (pl->cstate == S_PLAY || pl->cstate == S_STOP))
-                err = audio_decode(pl->au);
+		}
+	}
+	if (err == E_OK && (pl->cstate == S_PLAY || pl->cstate == S_STOP))
+		err = audio_decode(pl->au);
 	return err;
 }
 
