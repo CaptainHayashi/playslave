@@ -35,7 +35,7 @@ OBJS+=		constants.o messages.o
 OBJS+=		audio.o audio_av.o audio_cb.o
 # Code from elsewhere
 OBJS+=		cuppa/cmd.o cuppa/constants.o cuppa/errors.o cuppa/io.o
-OBJS+=		cuppa/messages.o
+OBJS+=		cuppa/messages.o cuppa/utils.o
 OBJS+=		contrib/pa_ringbuffer.o
 
 $(PROG): $(OBJS) 
